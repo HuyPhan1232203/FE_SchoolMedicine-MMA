@@ -1,0 +1,16 @@
+email,fullName,phoneNumber,role,studentId,department,permissions,autoApprove
+phuhuynha@gmail.com,"Nguyễn Văn A",0123456789,parent,HS001,,"",false
+phuhuynhb@gmail.com,"Trần Thị B",0987654321,parent,HS002,,"",false
+phuhuynhc@gmail.com,"Lê Văn C",0111222333,parent,HS003,,"",false
+phuhuynhd@gmail.com,"Phạm Thị D",0444555666,parent,HS004,,"",false
+phuhuynhe@gmail.com,"Hoàng Văn E",0777888999,parent,HS005,,"",false
+ytea@school.edu.vn,"BS. Nguyễn Thị Lan",0111222333,medical_staff,,"Khoa Y tế trường học","",true
+yteb@school.edu.vn,"Y tá Trần Văn Nam",0444555666,medical_staff,,"Phòng y tế","",true
+ytec@school.edu.vn,"BS. Lê Thị Hoa",0777888999,medical_staff,,"Khoa Nhi","",false
+admin1@school.edu.vn,"Nguyễn Thị Quản Lý",0999888777,administrator,,,"manage_users;view_reports;system_admin",true
+admin2@school.edu.vn,"Trần Văn Điều Hành",0666555444,administrator,,,"manage_users;view_reports",false
+phuhuynhf@gmail.com,"Võ Thị F",0123123123,parent,HS006,,"",false
+phuhuynhg@gmail.com,"Đỗ Văn G",0456456456,parent,HS007,,"",false
+phuhuynhh@gmail.com,"Bùi Thị H",0789789789,parent,HS008,,"",false
+ytekd@school.edu.vn,"Dược sĩ Nguyễn Văn I",0147258369,medical_staff,,"Phòng thuốc","",true
+yteke@school.edu.vn,"Điều dưỡng Trần Thị J",0369258147,medical_staff,,"Phòng chăm sóc sức khỏe","",false 

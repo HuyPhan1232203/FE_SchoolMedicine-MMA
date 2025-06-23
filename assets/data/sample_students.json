@@ -1,0 +1,456 @@
+[
+  {
+    "studentId": "HS001",
+    "fullName": "Nguyễn Văn An",
+    "dateOfBirth": "2007-03-15",
+    "gender": "male",
+    "grade": "10A1",
+    "academicYear": "2024-2025",
+    "address": "123 Đường Lê Lợi, Quận 1, TP.HCM",
+    "phoneNumber": "0987654321",
+    "parentContact": {
+      "fatherName": "Nguyễn Văn Bình",
+      "fatherPhone": "0912345678",
+      "motherName": "Trần Thị Lan",
+      "motherPhone": "0987654321",
+      "emergencyContact": "0912345678"
+    },
+    "medicalInfo": {
+      "bloodType": "A+",
+      "allergies": ["Hải sản", "Đậu phộng"],
+      "chronicDiseases": [],
+      "medications": ["Vitamin D3"],
+      "medicalHistory": ["Viêm amidan năm 2020"],
+      "disabilities": [],
+      "specialNeeds": [],
+      "notes": "Cần tránh tiếp xúc với hải sản"
+    },
+    "healthMetrics": {
+      "height": 165,
+      "weight": 55,
+      "bmi": 20.2,
+      "bmiCategory": "normal",
+      "bloodPressure": {
+        "systolic": 110,
+        "diastolic": 70
+      },
+      "heartRate": 75,
+      "temperature": 36.5,
+      "lastMeasuredAt": "2024-01-15T09:00:00Z"
+    },
+    "vaccinations": [
+      {
+        "vaccineName": "BCG",
+        "dateGiven": "2007-04-01",
+        "doseNumber": 1,
+        "givenBy": "BS. Nguyễn Văn A",
+        "batchNumber": "LOT123456",
+        "sideEffects": ""
+      },
+      {
+        "vaccineName": "Viêm gan B",
+        "dateGiven": "2007-04-01",
+        "doseNumber": 1,
+        "givenBy": "BS. Nguyễn Văn A",
+        "batchNumber": "LOT123457",
+        "sideEffects": ""
+      },
+      {
+        "vaccineName": "COVID-19",
+        "dateGiven": "2021-09-15",
+        "doseNumber": 1,
+        "nextDueDate": "2021-10-15",
+        "givenBy": "Y tá Lê Thị B",
+        "batchNumber": "LOT789012",
+        "sideEffects": "Đau nhẹ tại chỗ tiêm"
+      }
+    ],
+    "healthCheckups": [
+      {
+        "checkupId": "CHK_HS001_20240115",
+        "date": "2024-01-15T09:00:00Z",
+        "type": "routine",
+        "symptoms": [],
+        "diagnosis": "Bình thường",
+        "treatment": "Không cần điều trị",
+        "medications": [],
+        "followUpDate": null,
+        "doctorId": "DOC001",
+        "status": "completed",
+        "notes": "Khám sức khỏe định kỳ đầu năm học"
+      }
+    ],
+    "currentHealthStatus": {
+      "status": "healthy",
+      "lastCheckupDate": "2024-01-15T09:00:00Z",
+      "nextCheckupDue": "2024-07-15T09:00:00Z",
+      "restrictions": [],
+      "clearanceForSports": true,
+      "clearanceForTrips": true
+    },
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-15T09:00:00Z",
+    "createdBy": "SYSTEM_IMPORT",
+    "lastUpdatedBy": "DOC001",
+    "isActive": true
+  },
+  {
+    "studentId": "HS002",
+    "fullName": "Trần Thị Bình",
+    "dateOfBirth": "2007-07-22",
+    "gender": "female",
+    "grade": "10A1",
+    "academicYear": "2024-2025",
+    "address": "456 Đường Nguyễn Huệ, Quận 3, TP.HCM",
+    "phoneNumber": null,
+    "parentContact": {
+      "fatherName": "Trần Văn Cường",
+      "fatherPhone": "0923456789",
+      "motherName": "Lê Thị Dung",
+      "motherPhone": "0934567890",
+      "emergencyContact": "0923456789"
+    },
+    "medicalInfo": {
+      "bloodType": "B+",
+      "allergies": [],
+      "chronicDiseases": ["Hen suyễn nhẹ"],
+      "medications": ["Ventolin inhaler"],
+      "medicalHistory": ["Viêm phế quản năm 2019"],
+      "disabilities": [],
+      "specialNeeds": ["Cần tránh vận động quá mạnh"],
+      "notes": "Cần có thuốc xịt hen suyễn khi tham gia hoạt động thể thao"
+    },
+    "healthMetrics": {
+      "height": 158,
+      "weight": 48,
+      "bmi": 19.2,
+      "bmiCategory": "normal",
+      "bloodPressure": {
+        "systolic": 105,
+        "diastolic": 65
+      },
+      "heartRate": 80,
+      "temperature": 36.3,
+      "lastMeasuredAt": "2024-01-15T10:00:00Z"
+    },
+    "vaccinations": [
+      {
+        "vaccineName": "BCG",
+        "dateGiven": "2007-08-01",
+        "doseNumber": 1,
+        "givenBy": "BS. Trần Thị C",
+        "batchNumber": "LOT123458",
+        "sideEffects": ""
+      },
+      {
+        "vaccineName": "HPV",
+        "dateGiven": "2021-03-10",
+        "doseNumber": 1,
+        "nextDueDate": "2021-09-10",
+        "givenBy": "BS. Lê Văn D",
+        "batchNumber": "LOT456789",
+        "sideEffects": ""
+      }
+    ],
+    "healthCheckups": [
+      {
+        "checkupId": "CHK_HS002_20240115",
+        "date": "2024-01-15T10:00:00Z",
+        "type": "routine",
+        "symptoms": [],
+        "diagnosis": "Hen suyễn được kiểm soát tốt",
+        "treatment": "Tiếp tục dùng thuốc theo chỉ định",
+        "medications": ["Ventolin inhaler"],
+        "followUpDate": "2024-04-15T10:00:00Z",
+        "doctorId": "DOC002",
+        "status": "completed",
+        "notes": "Cần theo dõi chức năng hô hấp"
+      }
+    ],
+    "currentHealthStatus": {
+      "status": "chronic",
+      "lastCheckupDate": "2024-01-15T10:00:00Z",
+      "nextCheckupDue": "2024-04-15T10:00:00Z",
+      "restrictions": ["Hạn chế vận động cường độ cao"],
+      "clearanceForSports": true,
+      "clearanceForTrips": true
+    },
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-15T10:00:00Z",
+    "createdBy": "SYSTEM_IMPORT",
+    "lastUpdatedBy": "DOC002",
+    "isActive": true
+  },
+  {
+    "studentId": "HS003",
+    "fullName": "Lê Minh Cường",
+    "dateOfBirth": "2006-11-08",
+    "gender": "male",
+    "grade": "11A2",
+    "academicYear": "2024-2025",
+    "address": "789 Đường Trần Hưng Đạo, Quận 5, TP.HCM",
+    "phoneNumber": "0945678901",
+    "parentContact": {
+      "fatherName": "Lê Văn Dũng",
+      "fatherPhone": "0956789012",
+      "motherName": "Phạm Thị Hạnh",
+      "motherPhone": "0967890123",
+      "emergencyContact": "0956789012"
+    },
+    "medicalInfo": {
+      "bloodType": "O-",
+      "allergies": ["Penicillin"],
+      "chronicDiseases": [],
+      "medications": [],
+      "medicalHistory": ["Gãy tay trái năm 2020"],
+      "disabilities": [],
+      "specialNeeds": [],
+      "notes": "Cần tránh dùng Penicillin và các kháng sinh beta-lactam"
+    },
+    "healthMetrics": {
+      "height": 172,
+      "weight": 62,
+      "bmi": 21.0,
+      "bmiCategory": "normal",
+      "bloodPressure": {
+        "systolic": 115,
+        "diastolic": 75
+      },
+      "heartRate": 70,
+      "temperature": 36.7,
+      "lastMeasuredAt": "2024-01-15T11:00:00Z"
+    },
+    "vaccinations": [
+      {
+        "vaccineName": "BCG",
+        "dateGiven": "2006-12-01",
+        "doseNumber": 1,
+        "givenBy": "BS. Hoàng Văn E",
+        "batchNumber": "LOT123459",
+        "sideEffects": ""
+      },
+      {
+        "vaccineName": "COVID-19",
+        "dateGiven": "2021-08-20",
+        "doseNumber": 2,
+        "givenBy": "Y tá Nguyễn Thị F",
+        "batchNumber": "LOT890123",
+        "sideEffects": "Sốt nhẹ 24h"
+      }
+    ],
+    "healthCheckups": [
+      {
+        "checkupId": "CHK_HS003_20231220",
+        "date": "2023-12-20T14:00:00Z",
+        "type": "urgent",
+        "symptoms": ["Đau đầu", "Chóng mặt"],
+        "diagnosis": "Stress học tập",
+        "treatment": "Nghỉ ngơi, giảm căng thẳng",
+        "medications": ["Paracetamol"],
+        "followUpDate": null,
+        "doctorId": "DOC001",
+        "status": "completed",
+        "notes": "Đã khỏi hoàn toàn sau 3 ngày nghỉ"
+      },
+      {
+        "checkupId": "CHK_HS003_20240115",
+        "date": "2024-01-15T11:00:00Z",
+        "type": "routine",
+        "symptoms": [],
+        "diagnosis": "Bình thường",
+        "treatment": "Không cần điều trị",
+        "medications": [],
+        "followUpDate": null,
+        "doctorId": "DOC001",
+        "status": "completed",
+        "notes": "Tình trạng sức khỏe ổn định"
+      }
+    ],
+    "currentHealthStatus": {
+      "status": "healthy",
+      "lastCheckupDate": "2024-01-15T11:00:00Z",
+      "nextCheckupDue": "2024-07-15T11:00:00Z",
+      "restrictions": [],
+      "clearanceForSports": true,
+      "clearanceForTrips": true
+    },
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-15T11:00:00Z",
+    "createdBy": "SYSTEM_IMPORT",
+    "lastUpdatedBy": "DOC001",
+    "isActive": true
+  },
+  {
+    "studentId": "HS004",
+    "fullName": "Phạm Thị Dung",
+    "dateOfBirth": "2006-05-30",
+    "gender": "female",
+    "grade": "12A1",
+    "academicYear": "2024-2025",
+    "address": "321 Đường Hai Bà Trưng, Quận 7, TP.HCM",
+    "phoneNumber": "0978901234",
+    "parentContact": {
+      "fatherName": "Phạm Văn Hùng",
+      "fatherPhone": "0989012345",
+      "motherName": "Võ Thị Lan",
+      "motherPhone": "0990123456",
+      "emergencyContact": "0989012345"
+    },
+    "medicalInfo": {
+      "bloodType": "AB+",
+      "allergies": ["Phấn hoa", "Bụi nhà"],
+      "chronicDiseases": ["Viêm mũi dị ứng"],
+      "medications": ["Thuốc xịt mũi Flixonase"],
+      "medicalHistory": ["Viêm xoang mãn tính"],
+      "disabilities": [],
+      "specialNeeds": ["Cần tránh môi trường có nhiều bụi"],
+      "notes": "Triệu chứng nặng hơn vào mùa khô"
+    },
+    "healthMetrics": {
+      "height": 162,
+      "weight": 52,
+      "bmi": 19.8,
+      "bmiCategory": "normal",
+      "bloodPressure": {
+        "systolic": 108,
+        "diastolic": 68
+      },
+      "heartRate": 78,
+      "temperature": 36.4,
+      "lastMeasuredAt": "2024-01-15T14:00:00Z"
+    },
+    "vaccinations": [
+      {
+        "vaccineName": "BCG",
+        "dateGiven": "2006-06-15",
+        "doseNumber": 1,
+        "givenBy": "BS. Đặng Thị G",
+        "batchNumber": "LOT123460",
+        "sideEffects": ""
+      },
+      {
+        "vaccineName": "HPV",
+        "dateGiven": "2020-01-15",
+        "doseNumber": 3,
+        "givenBy": "BS. Bùi Văn H",
+        "batchNumber": "LOT567890",
+        "sideEffects": ""
+      }
+    ],
+    "healthCheckups": [
+      {
+        "checkupId": "CHK_HS004_20240115",
+        "date": "2024-01-15T14:00:00Z",
+        "type": "routine",
+        "symptoms": ["Nghẹt mũi nhẹ"],
+        "diagnosis": "Viêm mũi dị ứng theo mùa",
+        "treatment": "Tiếp tục dùng thuốc xịt mũi",
+        "medications": ["Flixonase", "Vitamin C"],
+        "followUpDate": "2024-03-15T14:00:00Z",
+        "doctorId": "DOC003",
+        "status": "completed",
+        "notes": "Tình trạng dị ứng được kiểm soát tốt"
+      }
+    ],
+    "currentHealthStatus": {
+      "status": "chronic",
+      "lastCheckupDate": "2024-01-15T14:00:00Z",
+      "nextCheckupDue": "2024-03-15T14:00:00Z",
+      "restrictions": [],
+      "clearanceForSports": true,
+      "clearanceForTrips": true
+    },
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-15T14:00:00Z",
+    "createdBy": "SYSTEM_IMPORT",
+    "lastUpdatedBy": "DOC003",
+    "isActive": true
+  },
+  {
+    "studentId": "HS005",
+    "fullName": "Hoàng Văn Đức",
+    "dateOfBirth": "2007-01-12",
+    "gender": "male",
+    "grade": "10B2",
+    "academicYear": "2024-2025",
+    "address": "654 Đường Lý Tự Trọng, Quận 1, TP.HCM",
+    "phoneNumber": null,
+    "parentContact": {
+      "fatherName": "Hoàng Văn Phúc",
+      "fatherPhone": "0901234567",
+      "motherName": "Đỗ Thị Quyên",
+      "motherPhone": "0912345678",
+      "emergencyContact": "0901234567"
+    },
+    "medicalInfo": {
+      "bloodType": "A-",
+      "allergies": [],
+      "chronicDiseases": ["Cận thị"],
+      "medications": [],
+      "medicalHistory": ["Cận thị từ năm 2019"],
+      "disabilities": [],
+      "specialNeeds": ["Cần đeo kính cận"],
+      "notes": "Độ cận: mắt trái -2.5D, mắt phải -2.0D"
+    },
+    "healthMetrics": {
+      "height": 168,
+      "weight": 58,
+      "bmi": 20.5,
+      "bmiCategory": "normal",
+      "bloodPressure": {
+        "systolic": 112,
+        "diastolic": 72
+      },
+      "heartRate": 74,
+      "temperature": 36.6,
+      "lastMeasuredAt": "2024-01-15T15:00:00Z"
+    },
+    "vaccinations": [
+      {
+        "vaccineName": "BCG",
+        "dateGiven": "2007-02-01",
+        "doseNumber": 1,
+        "givenBy": "BS. Hồ Thị I",
+        "batchNumber": "LOT123461",
+        "sideEffects": ""
+      },
+      {
+        "vaccineName": "COVID-19",
+        "dateGiven": "2021-10-05",
+        "doseNumber": 1,
+        "nextDueDate": "2021-11-05",
+        "givenBy": "Y tá Ngô Văn J",
+        "batchNumber": "LOT901234",
+        "sideEffects": ""
+      }
+    ],
+    "healthCheckups": [
+      {
+        "checkupId": "CHK_HS005_20240115",
+        "date": "2024-01-15T15:00:00Z",
+        "type": "routine",
+        "symptoms": [],
+        "diagnosis": "Bình thường, cận thị ổn định",
+        "treatment": "Tiếp tục đeo kính, nghỉ mắt thường xuyên",
+        "medications": [],
+        "followUpDate": "2024-12-15T15:00:00Z",
+        "doctorId": "DOC001",
+        "status": "completed",
+        "notes": "Nên kiểm tra mắt 6 tháng/lần"
+      }
+    ],
+    "currentHealthStatus": {
+      "status": "healthy",
+      "lastCheckupDate": "2024-01-15T15:00:00Z",
+      "nextCheckupDue": "2024-07-15T15:00:00Z",
+      "restrictions": [],
+      "clearanceForSports": true,
+      "clearanceForTrips": true
+    },
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-15T15:00:00Z",
+    "createdBy": "SYSTEM_IMPORT",
+    "lastUpdatedBy": "DOC001",
+    "isActive": true
+  }
+] 

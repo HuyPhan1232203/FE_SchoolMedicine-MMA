@@ -1,0 +1,122 @@
+[
+  {
+    "email": "phuhuynha@gmail.com",
+    "fullName": "Nguyễn Văn A",
+    "phoneNumber": "0123456789",
+    "role": "parent",
+    "studentId": "HS001",
+    "autoApprove": false
+  },
+  {
+    "email": "phuhuynhb@gmail.com",
+    "fullName": "Trần Thị B",
+    "phoneNumber": "0987654321",
+    "role": "parent",
+    "studentId": "HS002",
+    "autoApprove": false
+  },
+  {
+    "email": "phuhuynhc@gmail.com",
+    "fullName": "Lê Văn C",
+    "phoneNumber": "0111222333",
+    "role": "parent",
+    "studentId": "HS003",
+    "autoApprove": false
+  },
+  {
+    "email": "phuhuynhd@gmail.com",
+    "fullName": "Phạm Thị D",
+    "phoneNumber": "0444555666",
+    "role": "parent",
+    "studentId": "HS004",
+    "autoApprove": false
+  },
+  {
+    "email": "phuhuynhe@gmail.com",
+    "fullName": "Hoàng Văn E",
+    "phoneNumber": "0777888999",
+    "role": "parent",
+    "studentId": "HS005",
+    "autoApprove": false
+  },
+  {
+    "email": "ytea@school.edu.vn",
+    "fullName": "BS. Nguyễn Thị Lan",
+    "phoneNumber": "0111222333",
+    "role": "medical_staff",
+    "department": "Khoa Y tế trường học",
+    "autoApprove": true
+  },
+  {
+    "email": "yteb@school.edu.vn",
+    "fullName": "Y tá Trần Văn Nam",
+    "phoneNumber": "0444555666",
+    "role": "medical_staff",
+    "department": "Phòng y tế",
+    "autoApprove": true
+  },
+  {
+    "email": "ytec@school.edu.vn",
+    "fullName": "BS. Lê Thị Hoa",
+    "phoneNumber": "0777888999",
+    "role": "medical_staff",
+    "department": "Khoa Nhi",
+    "autoApprove": false
+  },
+  {
+    "email": "admin1@school.edu.vn",
+    "fullName": "Nguyễn Thị Quản Lý",
+    "phoneNumber": "0999888777",
+    "role": "administrator",
+    "permissions": ["manage_users", "view_reports", "system_admin"],
+    "autoApprove": true
+  },
+  {
+    "email": "admin2@school.edu.vn",
+    "fullName": "Trần Văn Điều Hành",
+    "phoneNumber": "0666555444",
+    "role": "administrator",
+    "permissions": ["manage_users", "view_reports"],
+    "autoApprove": false
+  },
+  {
+    "email": "phuhuynhf@gmail.com",
+    "fullName": "Võ Thị F",
+    "phoneNumber": "0123123123",
+    "role": "parent",
+    "studentId": "HS006",
+    "autoApprove": false
+  },
+  {
+    "email": "phuhuynhg@gmail.com",
+    "fullName": "Đỗ Văn G",
+    "phoneNumber": "0456456456",
+    "role": "parent",
+    "studentId": "HS007",
+    "autoApprove": false
+  },
+  {
+    "email": "phuhuynhh@gmail.com",
+    "fullName": "Bùi Thị H",
+    "phoneNumber": "0789789789",
+    "role": "parent",
+    "studentId": "HS008",
+    "autoApprove": false
+  },
+  {
+    "email": "ytekd@school.edu.vn",
+    "fullName": "Dược sĩ Nguyễn Văn I",
+    "phoneNumber": "0147258369",
+    "role": "medical_staff",
+    "department": "Phòng thuốc",
+    "autoApprove": true
+  },
+  {
+    "email": "yteke@school.edu.vn",
+    "fullName": "Điều dưỡng Trần Thị J",
+    "phoneNumber": "0369258147",
+    "role": "medical_staff",
+    "department": "Phòng chăm sóc sức khỏe",
+    "autoApprove": false
+  }
+] 
