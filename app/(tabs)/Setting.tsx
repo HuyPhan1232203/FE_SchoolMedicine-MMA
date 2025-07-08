@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { signOut } from "firebase/auth";
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Alert,
   Dimensions,
@@ -190,6 +190,28 @@ const Setting = () => {
     },
   ];
 
+  // Admin settings - only show for administrators
+  const adminSettings: SettingOption[] = [
+    {
+      id: "admin-dashboard",
+      title: "Khu vực Quản trị",
+      description: "Dashboard và quản lý hệ thống",
+      icon: "👨‍💼",
+      type: "navigation",
+      color: "#E67E22",
+      onPress: () => router.push("/(admin)/Dashboard" as any),
+    },
+    {
+      id: "admin-import",
+      title: "Import Users",
+      description: "Nhập danh sách người dùng hàng loạt",
+      icon: "📤",
+      type: "navigation",
+      color: "#2ECC71",
+      onPress: () => router.push("/AdminImport"),
+    },
+  ];
+
   const supportSettings: SettingOption[] = [
     {
       id: "help",
@@ -369,6 +391,16 @@ const Setting = () => {
           {accountSettings.map(renderSettingItem)}
         </View>
       </View>
+
+      {/* Admin Settings - Only show for administrators */}
+      {userRole === "administrator" && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>⚙️ Quản trị viên</Text>
+          <View style={styles.settingsGroup}>
+            {adminSettings.map(renderSettingItem)}
+          </View>
+        </View>
+      )}
 
       {/* Support & Information */}
       <View style={styles.section}>

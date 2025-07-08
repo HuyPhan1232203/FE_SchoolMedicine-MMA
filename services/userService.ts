@@ -1,31 +1,31 @@
-import { User } from 'firebase/auth';
+import { User } from "firebase/auth";
 import {
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    query,
-    setDoc,
-    Timestamp,
-    updateDoc,
-    where
-} from 'firebase/firestore';
-import { db } from '../lib/firebase';
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  setDoc,
+  Timestamp,
+  updateDoc,
+  where,
+} from "firebase/firestore";
+import { db } from "../lib/firebase";
 
 // User Status Enum
 export enum UserStatus {
-  PENDING = 'pending',           // Chờ phê duyệt
-  REJECTED = 'rejected',         // Bị từ chối
-  SUSPENDED = 'suspended',       // Bị tạm dừng
-  ACTIVE = 'active',            // Đang hoạt động (đã đăng nhập)
-  INACTIVE = 'inactive',        // Không hoạt động
+  PENDING = "pending", // Chờ phê duyệt
+  REJECTED = "rejected", // Bị từ chối
+  SUSPENDED = "suspended", // Bị tạm dừng
+  ACTIVE = "active", // Đang hoạt động (đã đăng nhập)
+  INACTIVE = "inactive", // Không hoạt động
 }
 
 // User Roles
 export enum UserRole {
-  PARENT = 'parent',
-  MEDICAL_STAFF = 'medical_staff',
-  ADMINISTRATOR = 'administrator',
+  PARENT = "parent",
+  MEDICAL_STAFF = "medical_staff",
+  ADMINISTRATOR = "administrator",
 }
 
 // User Profile Interface
@@ -36,12 +36,12 @@ export interface UserProfile {
   phoneNumber: string;
   role: UserRole;
   status: UserStatus;
-  studentId?: string;           // Chỉ cho phụ huynh
-  department?: string;          // Chỉ cho medical staff
-  permissions?: string[];       // Chỉ cho administrator
-  approvedBy?: string;          // ID của admin phê duyệt
-  approvedAt?: Timestamp;       // Thời gian phê duyệt
-  rejectedReason?: string;      // Lý do từ chối
+  studentId?: string; // Chỉ cho phụ huynh
+  department?: string; // Chỉ cho medical staff
+  permissions?: string[]; // Chỉ cho administrator
+  approvedBy?: string; // ID của admin phê duyệt
+  approvedAt?: Timestamp; // Thời gian phê duyệt
+  rejectedReason?: string; // Lý do từ chối
   createdAt: Timestamp;
   updatedAt: Timestamp;
   lastLoginAt?: Timestamp;
@@ -49,16 +49,16 @@ export interface UserProfile {
 
 // Create user profile
 export const createUserProfile = async (
-  user: User, 
+  user: User,
   additionalData: Partial<UserProfile>
 ): Promise<void> => {
-  const userRef = doc(db, 'users', user.uid);
-  
+  const userRef = doc(db, "users", user.uid);
+
   const userData: UserProfile = {
     uid: user.uid,
-    email: user.email || '',
-    fullName: additionalData.fullName || '',
-    phoneNumber: additionalData.phoneNumber || '',
+    email: user.email || "",
+    fullName: additionalData.fullName || "",
+    phoneNumber: additionalData.phoneNumber || "",
     role: additionalData.role || UserRole.PARENT,
     status: UserStatus.PENDING, // Mặc định là chờ phê duyệt
     studentId: additionalData.studentId,
@@ -73,30 +73,32 @@ export const createUserProfile = async (
 };
 
 // Get user profile
-export const getUserProfile = async (uid: string): Promise<UserProfile | null> => {
+export const getUserProfile = async (
+  uid: string
+): Promise<UserProfile | null> => {
   try {
-    const userRef = doc(db, 'users', uid);
+    const userRef = doc(db, "users", uid);
     const userSnap = await getDoc(userRef);
-    
+
     if (userSnap.exists()) {
       return userSnap.data() as UserProfile;
     }
     return null;
   } catch (error) {
-    console.error('Error getting user profile:', error);
+    console.error("Error getting user profile:", error);
     throw error;
   }
 };
 
 // Update user status
 export const updateUserStatus = async (
-  uid: string, 
+  uid: string,
   status: UserStatus,
   approvedBy?: string,
   rejectedReason?: string
 ): Promise<void> => {
   try {
-    const userRef = doc(db, 'users', uid);
+    const userRef = doc(db, "users", uid);
     const updateData: Partial<UserProfile> = {
       status,
       updatedAt: Timestamp.now(),
@@ -113,7 +115,7 @@ export const updateUserStatus = async (
 
     await updateDoc(userRef, updateData);
   } catch (error) {
-    console.error('Error updating user status:', error);
+    console.error("Error updating user status:", error);
     throw error;
   }
 };
@@ -121,64 +123,68 @@ export const updateUserStatus = async (
 // Update last login time
 export const updateLastLogin = async (uid: string): Promise<void> => {
   try {
-    const userRef = doc(db, 'users', uid);
+    const userRef = doc(db, "users", uid);
     await updateDoc(userRef, {
       lastLoginAt: Timestamp.now(),
       status: UserStatus.ACTIVE, // Đánh dấu là đang hoạt động
       updatedAt: Timestamp.now(),
     });
   } catch (error) {
-    console.error('Error updating last login:', error);
+    console.error("Error updating last login:", error);
     throw error;
   }
 };
 
 // Check if user can access the system
-export const canUserAccess = (userProfile: UserProfile): {
+export const canUserAccess = (
+  userProfile: UserProfile
+): {
   canAccess: boolean;
   reason?: string;
   redirectTo?: string;
 } => {
   // Kiểm tra email verification
   // Note: Cần check từ Firebase Auth user object
-  
+
   switch (userProfile.status) {
     case UserStatus.PENDING:
       return {
         canAccess: false,
-        reason: 'Tài khoản đang chờ phê duyệt bởi quản trị viên',
-        redirectTo: '/AccountPending',
+        reason: "Tài khoản đang chờ phê duyệt bởi quản trị viên",
+        redirectTo: "/AccountPending",
       };
-    
+
     case UserStatus.REJECTED:
       return {
         canAccess: false,
-        reason: `Tài khoản đã bị từ chối. Lý do: ${userProfile.rejectedReason || 'Không có lý do cụ thể'}`,
-        redirectTo: '/AccountRejected',
+        reason: `Tài khoản đã bị từ chối. Lý do: ${
+          userProfile.rejectedReason || "Không có lý do cụ thể"
+        }`,
+        redirectTo: "/AccountRejected",
       };
-    
+
     case UserStatus.SUSPENDED:
       return {
         canAccess: false,
-        reason: 'Tài khoản đã bị tạm dừng. Vui lòng liên hệ quản trị viên',
-        redirectTo: '/AccountSuspended',
+        reason: "Tài khoản đã bị tạm dừng. Vui lòng liên hệ quản trị viên",
+        redirectTo: "/AccountSuspended",
       };
-    
+
     case UserStatus.ACTIVE:
       return {
         canAccess: true,
       };
-    
+
     case UserStatus.INACTIVE:
       return {
         canAccess: true, // Có thể đăng nhập nhưng cần kích hoạt lại
       };
-    
+
     default:
       return {
         canAccess: false,
-        reason: 'Trạng thái tài khoản không hợp lệ',
-        redirectTo: '/Login',
+        reason: "Trạng thái tài khoản không hợp lệ",
+        redirectTo: "/Login",
       };
   }
 };
@@ -186,37 +192,39 @@ export const canUserAccess = (userProfile: UserProfile): {
 // Get pending users for admin approval
 export const getPendingUsers = async (): Promise<UserProfile[]> => {
   try {
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('status', '==', UserStatus.PENDING));
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("status", "==", UserStatus.PENDING));
     const querySnapshot = await getDocs(q);
-    
+
     const pendingUsers: UserProfile[] = [];
     querySnapshot.forEach((doc) => {
       pendingUsers.push(doc.data() as UserProfile);
     });
-    
+
     return pendingUsers;
   } catch (error) {
-    console.error('Error getting pending users:', error);
+    console.error("Error getting pending users:", error);
     throw error;
   }
 };
 
 // Get users by role
-export const getUsersByRole = async (role: UserRole): Promise<UserProfile[]> => {
+export const getUsersByRole = async (
+  role: UserRole
+): Promise<UserProfile[]> => {
   try {
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('role', '==', role));
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("role", "==", role));
     const querySnapshot = await getDocs(q);
-    
+
     const users: UserProfile[] = [];
     querySnapshot.forEach((doc) => {
       users.push(doc.data() as UserProfile);
     });
-    
+
     return users;
   } catch (error) {
-    console.error('Error getting users by role:', error);
+    console.error("Error getting users by role:", error);
     throw error;
   }
 };
@@ -228,12 +236,11 @@ export const approveUser = async (
 ): Promise<void> => {
   try {
     await updateUserStatus(uid, UserStatus.ACTIVE, approvedByUid);
-    
+
     // Có thể gửi email thông báo ở đây
     // await sendApprovalNotification(uid);
-    
   } catch (error) {
-    console.error('Error approving user:', error);
+    console.error("Error approving user:", error);
     throw error;
   }
 };
@@ -246,12 +253,11 @@ export const rejectUser = async (
 ): Promise<void> => {
   try {
     await updateUserStatus(uid, UserStatus.REJECTED, rejectedByUid, reason);
-    
+
     // Có thể gửi email thông báo ở đây
     // await sendRejectionNotification(uid, reason);
-    
   } catch (error) {
-    console.error('Error rejecting user:', error);
+    console.error("Error rejecting user:", error);
     throw error;
   }
 };
@@ -263,7 +269,7 @@ export const suspendUser = async (
   suspendedByUid: string
 ): Promise<void> => {
   try {
-    const userRef = doc(db, 'users', uid);
+    const userRef = doc(db, "users", uid);
     await updateDoc(userRef, {
       status: UserStatus.SUSPENDED,
       suspendedReason: reason,
@@ -271,43 +277,42 @@ export const suspendUser = async (
       suspendedAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
-    
   } catch (error) {
-    console.error('Error suspending user:', error);
+    console.error("Error suspending user:", error);
     throw error;
   }
 };
 
 // Check user permissions
 export const hasPermission = (
-  userProfile: UserProfile, 
+  userProfile: UserProfile,
   permission: string
 ): boolean => {
   // Administrator có tất cả quyền
   if (userProfile.role === UserRole.ADMINISTRATOR) {
     return true;
   }
-  
+
   // Medical staff có một số quyền nhất định
   if (userProfile.role === UserRole.MEDICAL_STAFF) {
     const medicalStaffPermissions = [
-      'view_health_records',
-      'create_health_reports',
-      'manage_vaccinations',
-      'view_student_list',
+      "view_health_records",
+      "create_health_reports",
+      "manage_vaccinations",
+      "view_student_list",
     ];
     return medicalStaffPermissions.includes(permission);
   }
-  
+
   // Parent chỉ có quyền xem con mình
   if (userProfile.role === UserRole.PARENT) {
     const parentPermissions = [
-      'view_own_child_health',
-      'receive_notifications',
+      "view_own_child_health",
+      "receive_notifications",
     ];
     return parentPermissions.includes(permission);
   }
-  
+
   return userProfile.permissions?.includes(permission) || false;
 };
 
@@ -315,18 +320,20 @@ export const hasPermission = (
 export const getRoleDisplayName = (role: UserRole): string => {
   switch (role) {
     case UserRole.PARENT:
-      return 'Phụ huynh';
+      return "Phụ huynh";
     case UserRole.MEDICAL_STAFF:
-      return 'Cán bộ Y tế';
+      return "Cán bộ Y tế";
     case UserRole.ADMINISTRATOR:
-      return 'Quản trị viên';
+      return "Quản trị viên";
     default:
-      return 'Không xác định';
+      return "Không xác định";
   }
 };
 
 // Status display names and colors
-export const getStatusDisplayInfo = (status: UserStatus): {
+export const getStatusDisplayInfo = (
+  status: UserStatus
+): {
   name: string;
   color: string;
   icon: string;
@@ -334,39 +341,39 @@ export const getStatusDisplayInfo = (status: UserStatus): {
   switch (status) {
     case UserStatus.PENDING:
       return {
-        name: 'Chờ phê duyệt',
-        color: '#F39C12',
-        icon: '⏳',
+        name: "Chờ phê duyệt",
+        color: "#F39C12",
+        icon: "⏳",
       };
     case UserStatus.REJECTED:
       return {
-        name: 'Đã từ chối',
-        color: '#E74C3C',
-        icon: '❌',
+        name: "Đã từ chối",
+        color: "#E74C3C",
+        icon: "❌",
       };
     case UserStatus.SUSPENDED:
       return {
-        name: 'Đã tạm dừng',
-        color: '#E67E22',
-        icon: '⛔',
+        name: "Đã tạm dừng",
+        color: "#E67E22",
+        icon: "⛔",
       };
     case UserStatus.ACTIVE:
       return {
-        name: 'Đang hoạt động',
-        color: '#2ECC71',
-        icon: '🟢',
+        name: "Đang hoạt động",
+        color: "#2ECC71",
+        icon: "🟢",
       };
     case UserStatus.INACTIVE:
       return {
-        name: 'Không hoạt động',
-        color: '#95A5A6',
-        icon: '⚪',
+        name: "Không hoạt động",
+        color: "#95A5A6",
+        icon: "⚪",
       };
     default:
       return {
-        name: 'Không xác định',
-        color: '#BDC3C7',
-        icon: '❓',
+        name: "Không xác định",
+        color: "#BDC3C7",
+        icon: "❓",
       };
   }
-}; 
+};
