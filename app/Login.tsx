@@ -1,6 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -11,36 +11,42 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
-} from 'react-native';
-import { ErrorMessage, SuccessMessage } from '../components/ErrorMessage';
-import { MedicalColors, MedicalIcons, RoleColors } from '../constants/Colors';
-import { loginWithRetry, resendEmailVerification } from '../services/authService';
+  View,
+} from "react-native";
+import { ErrorMessage, SuccessMessage } from "../components/ErrorMessage";
+import { MedicalColors, MedicalIcons, RoleColors } from "../constants/Colors";
+import {
+  loginWithRetry,
+  resendEmailVerification,
+} from "../services/authService";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>(
+    {}
+  );
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [showResendOption, setShowResendOption] = useState(false);
+  const router = useRouter();
 
   // Real-time validation
   useEffect(() => {
     const newErrors: { email?: string; password?: string } = {};
-    
+
     if (email && !isValidEmail(email)) {
-      newErrors.email = 'Định dạng email không hợp lệ';
+      newErrors.email = "Định dạng email không hợp lệ";
     }
-    
+
     if (password && password.length < 6) {
-      newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
+      newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự";
     }
-    
+
     setErrors(newErrors);
   }, [email, password]);
 
@@ -50,41 +56,43 @@ export default function Login() {
   };
 
   const isFormValid = () => {
-    return email.trim() !== '' && 
-           password.trim() !== '' && 
-           isValidEmail(email) && 
-           password.length >= 6 &&
-           Object.keys(errors).length === 0;
+    return (
+      email.trim() !== "" &&
+      password.trim() !== "" &&
+      isValidEmail(email) &&
+      password.length >= 6 &&
+      Object.keys(errors).length === 0
+    );
   };
 
   const handleLogin = async () => {
     if (!isFormValid()) {
-      setErrorMessage('Vui lòng điền đầy đủ thông tin hợp lệ');
+      setErrorMessage("Vui lòng điền đầy đủ thông tin hợp lệ");
       return;
     }
 
     setLoading(true);
-    setErrorMessage('');
-    setSuccessMessage('');
+    setErrorMessage("");
+    setSuccessMessage("");
     setShowResendOption(false);
 
     try {
       await loginWithRetry(email.trim(), password);
-      
+
       // ✅ Save login time to AsyncStorage for auth persistence
       await AsyncStorage.setItem("loginTime", Date.now().toString());
-      
-      setSuccessMessage('Đăng nhập thành công! Đang chuyển hướng...');
-      
+
+      setSuccessMessage("Đăng nhập thành công! Đang chuyển hướng...");
+
       setTimeout(() => {
-        router.replace('/(tabs)/Home');
+        router.replace("/(tabs)/Home");
       }, 1000);
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       setErrorMessage(error.message);
-      
+
       // Show resend email option for email verification errors
-      if (error.code === 'auth/email-not-verified') {
+      if (error.code === "auth/email-not-verified") {
         setShowResendOption(true);
       }
     } finally {
@@ -94,11 +102,13 @@ export default function Login() {
 
   const handleResendEmailVerification = async () => {
     setResendLoading(true);
-    setErrorMessage('');
-    
+    setErrorMessage("");
+
     try {
       await resendEmailVerification();
-      setSuccessMessage('Email xác thực đã được gửi lại! Vui lòng kiểm tra hộp thư.');
+      setSuccessMessage(
+        "Email xác thực đã được gửi lại! Vui lòng kiểm tra hộp thư."
+      );
       setShowResendOption(false);
     } catch (error: any) {
       setErrorMessage(error.message);
@@ -108,11 +118,11 @@ export default function Login() {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -145,42 +155,47 @@ export default function Login() {
               <Text style={styles.roleText}>Phụ huynh</Text>
             </View>
             <View style={styles.roleItem}>
-              <Text style={styles.roleIcon}>{RoleColors.medical_staff.icon}</Text>
+              <Text style={styles.roleIcon}>
+                {RoleColors.medical_staff.icon}
+              </Text>
               <Text style={styles.roleText}>Cán bộ Y tế</Text>
             </View>
             <View style={styles.roleItem}>
-              <Text style={styles.roleIcon}>{RoleColors.administrator.icon}</Text>
+              <Text style={styles.roleIcon}>
+                {RoleColors.administrator.icon}
+              </Text>
               <Text style={styles.roleText}>Quản lý</Text>
             </View>
           </View>
 
           {/* Error Messages */}
           {errorMessage ? (
-            <ErrorMessage 
-              error={errorMessage} 
+            <ErrorMessage
+              error={errorMessage}
               type="auth"
-              onDismiss={() => setErrorMessage('')}
+              onDismiss={() => setErrorMessage("")}
             />
           ) : null}
 
           {/* Success Messages */}
           {successMessage ? (
-            <SuccessMessage 
+            <SuccessMessage
               message={successMessage}
-              onDismiss={() => setSuccessMessage('')}
+              onDismiss={() => setSuccessMessage("")}
             />
           ) : null}
 
           {/* Email Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>
-              {MedicalIcons.info} Email của bạn
-            </Text>
+            <Text style={styles.label}>{MedicalIcons.info} Email của bạn</Text>
             <TextInput
               style={[
                 styles.input,
                 errors.email && styles.inputError,
-                !errors.email && email && isValidEmail(email) && styles.inputSuccess
+                !errors.email &&
+                  email &&
+                  isValidEmail(email) &&
+                  styles.inputSuccess,
               ]}
               placeholder="Nhập địa chỉ email"
               placeholderTextColor={MedicalColors.textMuted}
@@ -191,22 +206,21 @@ export default function Login() {
               autoCorrect={false}
             />
             {errors.email && (
-              <Text style={styles.errorText}>
-                ⚠️ {errors.email}
-              </Text>
+              <Text style={styles.errorText}>⚠️ {errors.email}</Text>
             )}
           </View>
 
           {/* Password Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>
-              🔒 Mật khẩu
-            </Text>
+            <Text style={styles.label}>🔒 Mật khẩu</Text>
             <TextInput
               style={[
                 styles.input,
                 errors.password && styles.inputError,
-                !errors.password && password && password.length >= 6 && styles.inputSuccess
+                !errors.password &&
+                  password &&
+                  password.length >= 6 &&
+                  styles.inputSuccess,
               ]}
               placeholder="Nhập mật khẩu"
               placeholderTextColor={MedicalColors.textMuted}
@@ -217,25 +231,24 @@ export default function Login() {
               autoCorrect={false}
             />
             {errors.password && (
-              <Text style={styles.errorText}>
-                ⚠️ {errors.password}
-              </Text>
+              <Text style={styles.errorText}>⚠️ {errors.password}</Text>
             )}
           </View>
 
           {/* Resend Email Verification Option */}
           {showResendOption && (
             <View style={styles.resendContainer}>
-              <Text style={styles.resendText}>
-                Email chưa được xác thực?
-              </Text>
+              <Text style={styles.resendText}>Email chưa được xác thực?</Text>
               <TouchableOpacity
                 style={styles.resendButton}
                 onPress={handleResendEmailVerification}
                 disabled={resendLoading}
               >
                 {resendLoading ? (
-                  <ActivityIndicator size="small" color={MedicalColors.primary} />
+                  <ActivityIndicator
+                    size="small"
+                    color={MedicalColors.primary}
+                  />
                 ) : (
                   <Text style={styles.resendButtonText}>
                     📧 Gửi lại email xác thực
@@ -249,7 +262,7 @@ export default function Login() {
           <TouchableOpacity
             style={[
               styles.loginButton,
-              !isFormValid() && styles.loginButtonDisabled
+              !isFormValid() && styles.loginButtonDisabled,
             ]}
             onPress={handleLogin}
             disabled={loading || !isFormValid()}
@@ -257,9 +270,7 @@ export default function Login() {
             {loading ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Text style={styles.loginButtonText}>
-                🏥 Đăng nhập
-              </Text>
+              <Text style={styles.loginButtonText}>🏥 Đăng nhập</Text>
             )}
           </TouchableOpacity>
 
@@ -267,16 +278,14 @@ export default function Login() {
           <View style={styles.linksContainer}>
             <TouchableOpacity
               style={styles.linkButton}
-              onPress={() => router.push('/ResetPassword')}
+              onPress={() => router.push("/ResetPassword")}
             >
-              <Text style={styles.linkText}>
-                🔑 Quên mật khẩu?
-              </Text>
+              <Text style={styles.linkText}>🔑 Quên mật khẩu?</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.registerButton}
-              onPress={() => router.push('/Register')}
+              onPress={() => router.push("/Register")}
             >
               <Text style={styles.registerButtonText}>
                 {MedicalIcons.family} Đăng ký tài khoản mới
@@ -306,17 +315,17 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     padding: 20,
     paddingTop: 60,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 30,
   },
   logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 10,
   },
   logoIcon: {
@@ -325,19 +334,19 @@ const styles = StyleSheet.create({
   },
   logoText: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: MedicalColors.primary,
   },
   subtitle: {
     fontSize: 16,
     color: MedicalColors.textSecondary,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 5,
   },
   description: {
     fontSize: 14,
     color: MedicalColors.textMuted,
-    textAlign: 'center',
+    textAlign: "center",
   },
   loginCard: {
     backgroundColor: MedicalColors.backgroundCard,
@@ -354,12 +363,12 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   cardHeader: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 20,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: MedicalColors.textPrimary,
     marginBottom: 5,
   },
@@ -368,15 +377,15 @@ const styles = StyleSheet.create({
     color: MedicalColors.textMuted,
   },
   roleIndicators: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
     backgroundColor: MedicalColors.backgroundSecondary,
     borderRadius: 12,
     padding: 12,
     marginBottom: 20,
   },
   roleItem: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
   },
   roleIcon: {
@@ -386,14 +395,14 @@ const styles = StyleSheet.create({
   roleText: {
     fontSize: 10,
     color: MedicalColors.textSecondary,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   inputContainer: {
     marginBottom: 16,
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: MedicalColors.textPrimary,
     marginBottom: 8,
   },
@@ -408,24 +417,24 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderColor: MedicalColors.inputBorderError,
-    backgroundColor: '#FFF5F5',
+    backgroundColor: "#FFF5F5",
   },
   inputSuccess: {
     borderColor: MedicalColors.inputBorderSuccess,
-    backgroundColor: '#F0FFF4',
+    backgroundColor: "#F0FFF4",
   },
   errorText: {
     color: MedicalColors.error,
     fontSize: 12,
     marginTop: 4,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   resendContainer: {
-    backgroundColor: '#F8F9FF',
+    backgroundColor: "#F8F9FF",
     borderRadius: 8,
     padding: 12,
     marginBottom: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   resendText: {
     fontSize: 14,
@@ -443,13 +452,13 @@ const styles = StyleSheet.create({
   resendButtonText: {
     color: MedicalColors.primary,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   loginButton: {
     backgroundColor: MedicalColors.primary,
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 20,
     shadowColor: MedicalColors.shadowMedium,
     shadowOffset: {
@@ -466,12 +475,12 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   loginButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   linksContainer: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   linkButton: {
     marginBottom: 12,
@@ -479,7 +488,7 @@ const styles = StyleSheet.create({
   linkText: {
     color: MedicalColors.accent,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   registerButton: {
     backgroundColor: MedicalColors.secondary,
@@ -490,21 +499,21 @@ const styles = StyleSheet.create({
   registerButtonText: {
     color: MedicalColors.textPrimary,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   footer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 20,
   },
   footerText: {
     fontSize: 14,
     color: MedicalColors.textSecondary,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 4,
   },
   footerSubtext: {
     fontSize: 12,
     color: MedicalColors.textMuted,
-    textAlign: 'center',
+    textAlign: "center",
   },
-}); 
+});

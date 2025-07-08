@@ -15,7 +15,6 @@ import { db } from '../lib/firebase';
 // User Status Enum
 export enum UserStatus {
   PENDING = 'pending',           // Chờ phê duyệt
-  APPROVED = 'approved',         // Đã được phê duyệt - có thể đăng nhập
   REJECTED = 'rejected',         // Bị từ chối
   SUSPENDED = 'suspended',       // Bị tạm dừng
   ACTIVE = 'active',            // Đang hoạt động (đã đăng nhập)
@@ -103,7 +102,7 @@ export const updateUserStatus = async (
       updatedAt: Timestamp.now(),
     };
 
-    if (status === UserStatus.APPROVED && approvedBy) {
+    if (status === UserStatus.ACTIVE && approvedBy) {
       updateData.approvedBy = approvedBy;
       updateData.approvedAt = Timestamp.now();
     }
@@ -165,7 +164,6 @@ export const canUserAccess = (userProfile: UserProfile): {
         redirectTo: '/AccountSuspended',
       };
     
-    case UserStatus.APPROVED:
     case UserStatus.ACTIVE:
       return {
         canAccess: true,
@@ -229,7 +227,7 @@ export const approveUser = async (
   approvedByUid: string
 ): Promise<void> => {
   try {
-    await updateUserStatus(uid, UserStatus.APPROVED, approvedByUid);
+    await updateUserStatus(uid, UserStatus.ACTIVE, approvedByUid);
     
     // Có thể gửi email thông báo ở đây
     // await sendApprovalNotification(uid);
@@ -339,12 +337,6 @@ export const getStatusDisplayInfo = (status: UserStatus): {
         name: 'Chờ phê duyệt',
         color: '#F39C12',
         icon: '⏳',
-      };
-    case UserStatus.APPROVED:
-      return {
-        name: 'Đã phê duyệt',
-        color: '#27AE60',
-        icon: '✅',
       };
     case UserStatus.REJECTED:
       return {

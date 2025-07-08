@@ -11,7 +11,7 @@ export default function Index() {
     if (!loading) {
       if (user) {
         // @ts-ignore - Expo Router type issue with tab navigation
-        router.replace("/(tabs)");
+        router.replace("/(tabs)/Home");
       } else {
         router.replace("/Login");
       }
@@ -23,4 +23,4 @@ export default function Index() {
       <ActivityIndicator size="large" />
     </View>
   );
-} 
+}

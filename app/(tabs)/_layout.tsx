@@ -61,6 +61,27 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="MedicalTools"
+        options={{
+          title: "Dụng cụ Y tế",
+          tabBarButton: () => null, // Ẩn khỏi tab bar, chỉ điều hướng bằng code
+        }}
+      />
+      <Tabs.Screen
+        name="EventReport"
+        options={{
+          title: "Khai báo sự kiện",
+          tabBarButton: () => null,
+        }}
+      />
+      <Tabs.Screen
+        name="Vaccination"
+        options={{
+          title: "Tiêm chủng",
+          tabBarButton: () => null,
+        }}
+      />
     </Tabs>
   );
 }

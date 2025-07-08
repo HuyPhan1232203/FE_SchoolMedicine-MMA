@@ -54,7 +54,7 @@ export async function login(email: string, password: string) {
     const userData = userDoc.data();
     
     // Check account approval
-    if (!userData || userData.status !== "approved") {
+    if (!userData || userData.status !== "active") {
       const approvalError = new Error('Tài khoản chưa được duyệt bởi quản trị viên. Vui lòng đợi phê duyệt.');
       (approvalError as any).code = 'auth/account-not-approved';
       throw approvalError;

@@ -1,25 +1,30 @@
-import React, { useState } from 'react';
+import { useRouter } from "expo-router";
+import React, { useState } from "react";
 import {
-    Alert,
-    Dimensions,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from 'react-native';
-import { MedicalColors, MedicalIcons, RoleColors } from '../../constants/Colors';
-import { useAuth } from '../../hooks/useAuth';
+  Alert,
+  Dimensions,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import {
+  MedicalColors,
+  MedicalIcons,
+  RoleColors,
+} from "../../constants/Colors";
+import { useAuth } from "../../hooks/useAuth";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 interface HealthMetric {
   id: string;
   title: string;
   value: string;
   icon: string;
-  trend: 'up' | 'down' | 'stable';
+  trend: "up" | "down" | "stable";
   color: string;
 }
 
@@ -37,74 +42,77 @@ interface RecentActivity {
   title: string;
   description: string;
   time: string;
-  type: 'checkup' | 'vaccination' | 'emergency' | 'report';
+  type: "checkup" | "vaccination" | "emergency" | "report";
   icon: string;
 }
 
 export default function Home() {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
-  const [userRole, setUserRole] = useState<'parent' | 'medical_staff' | 'administrator'>('parent');
+  const userRole = userProfile?.role || "parent";
+
+  // Thêm hàm điều hướng
+  const router = useRouter();
 
   // Mock data - would come from backend
   const healthMetrics: HealthMetric[] = [
     {
-      id: '1',
-      title: 'Học sinh khỏe mạnh',
-      value: '328/350',
+      id: "1",
+      title: "Học sinh khỏe mạnh",
+      value: "328/350",
       icon: MedicalIcons.check,
-      trend: 'up',
+      trend: "up",
       color: MedicalColors.success,
     },
     {
-      id: '2',
-      title: 'Cần theo dõi',
-      value: '18',
+      id: "2",
+      title: "Cần theo dõi",
+      value: "18",
       icon: MedicalIcons.warning,
-      trend: 'stable',
+      trend: "stable",
       color: MedicalColors.warning,
     },
     {
-      id: '3',
-      title: 'Khám sức khỏe hôm nay',
-      value: '12',
+      id: "3",
+      title: "Khám sức khỏe hôm nay",
+      value: "12",
       icon: MedicalIcons.stethoscope,
-      trend: 'down',
+      trend: "down",
       color: MedicalColors.info,
     },
     {
-      id: '4',
-      title: 'Tiêm chủng cần làm',
-      value: '5',
+      id: "4",
+      title: "Tiêm chủng cần làm",
+      value: "5",
       icon: MedicalIcons.syringe,
-      trend: 'stable',
+      trend: "stable",
       color: MedicalColors.accent,
     },
   ];
 
   const recentActivities: RecentActivity[] = [
     {
-      id: '1',
-      title: 'Khám sức khỏe định kỳ',
-      description: 'Lớp 6A - 25 học sinh đã hoàn thành',
-      time: '2 giờ trước',
-      type: 'checkup',
+      id: "1",
+      title: "Khám sức khỏe định kỳ",
+      description: "Lớp 6A - 25 học sinh đã hoàn thành",
+      time: "2 giờ trước",
+      type: "checkup",
       icon: MedicalIcons.stethoscope,
     },
     {
-      id: '2',
-      title: 'Tiêm vaccine phòng cúm',
-      description: 'Đợt 1 - 150 học sinh đã tiêm',
-      time: '5 giờ trước',
-      type: 'vaccination',
+      id: "2",
+      title: "Tiêm vaccine phòng cúm",
+      description: "Đợt 1 - 150 học sinh đã tiêm",
+      time: "5 giờ trước",
+      type: "vaccination",
       icon: MedicalIcons.syringe,
     },
     {
-      id: '3',
-      title: 'Báo cáo sức khỏe tháng',
-      description: 'Tháng 11/2024 đã hoàn thành',
-      time: '1 ngày trước',
-      type: 'report',
+      id: "3",
+      title: "Báo cáo sức khỏe tháng",
+      description: "Tháng 11/2024 đã hoàn thành",
+      time: "1 ngày trước",
+      type: "report",
       icon: MedicalIcons.report,
     },
   ];
@@ -112,82 +120,87 @@ export default function Home() {
   const getQuickActions = (): QuickAction[] => {
     const commonActions = [
       {
-        id: 'health-check',
-        title: 'Khám sức khỏe',
-        description: 'Đăng ký khám sức khỏe',
+        id: "health-check",
+        title: "Khám sức khỏe",
+        description: "Đăng ký khám sức khỏe",
         icon: MedicalIcons.stethoscope,
         color: MedicalColors.primary,
-        action: () => Alert.alert('Khám sức khỏe', 'Chức năng đang phát triển'),
+        action: () => Alert.alert("Khám sức khỏe", "Chức năng đang phát triển"),
       },
       {
-        id: 'vaccination',
-        title: 'Tiêm chủng',
-        description: 'Lịch tiêm và đăng ký',
+        id: "vaccination",
+        title: "Tiêm chủng",
+        description: "Lịch tiêm và đăng ký",
         icon: MedicalIcons.syringe,
         color: MedicalColors.accent,
-        action: () => Alert.alert('Tiêm chủng', 'Chức năng đang phát triển'),
+        action: () => Alert.alert("Tiêm chủng", "Chức năng đang phát triển"),
       },
     ];
 
     switch (userRole) {
-      case 'parent':
+      case "parent":
         return [
           ...commonActions,
           {
-            id: 'child-health',
-            title: 'Sức khỏe con em',
-            description: 'Xem thông tin sức khỏe',
+            id: "child-health",
+            title: "Sức khỏe con em",
+            description: "Xem thông tin sức khỏe",
             icon: MedicalIcons.family,
             color: RoleColors.parent.primary,
-            action: () => Alert.alert('Sức khỏe con em', 'Chức năng đang phát triển'),
+            action: () =>
+              Alert.alert("Sức khỏe con em", "Chức năng đang phát triển"),
           },
           {
-            id: 'emergency',
-            title: 'Khẩn cấp',
-            description: 'Liên hệ y tế khẩn cấp',
+            id: "emergency",
+            title: "Khẩn cấp",
+            description: "Liên hệ y tế khẩn cấp",
             icon: MedicalIcons.alert,
             color: MedicalColors.error,
-            action: () => Alert.alert('Khẩn cấp', 'Hotline: 0123-456-789'),
+            action: () => Alert.alert("Khẩn cấp", "Hotline: 0123-456-789"),
           },
         ];
-      case 'medical_staff':
+      case "medical_staff":
         return [
           ...commonActions,
           {
-            id: 'patient-list',
-            title: 'Danh sách bệnh nhân',
-            description: 'Quản lý học sinh cần điều trị',
+            id: "patient-list",
+            title: "Danh sách bệnh nhân",
+            description: "Quản lý học sinh cần điều trị",
             icon: MedicalIcons.doctor,
             color: RoleColors.medical_staff.primary,
-            action: () => Alert.alert('Danh sách bệnh nhân', 'Chức năng đang phát triển'),
+            action: () =>
+              Alert.alert("Danh sách bệnh nhân", "Chức năng đang phát triển"),
           },
           {
-            id: 'medical-record',
-            title: 'Hồ sơ y tế',
-            description: 'Cập nhật hồ sơ sức khỏe',
+            id: "medical-record",
+            title: "Hồ sơ y tế",
+            description: "Cập nhật hồ sơ sức khỏe",
             icon: MedicalIcons.report,
             color: MedicalColors.secondary,
-            action: () => Alert.alert('Hồ sơ y tế', 'Chức năng đang phát triển'),
+            action: () =>
+              Alert.alert("Hồ sơ y tế", "Chức năng đang phát triển"),
           },
         ];
-      case 'administrator':
+      case "administrator":
         return [
           ...commonActions,
           {
-            id: 'analytics',
-            title: 'Thống kê y tế',
-            description: 'Báo cáo và phân tích',
+            id: "analytics",
+            title: "Thống kê y tế",
+            description: "Báo cáo và phân tích",
             icon: MedicalIcons.report,
             color: RoleColors.administrator.primary,
-            action: () => Alert.alert('Thống kê y tế', 'Chức năng đang phát triển'),
+            action: () =>
+              Alert.alert("Thống kê y tế", "Chức năng đang phát triển"),
           },
           {
-            id: 'manage-staff',
-            title: 'Quản lý nhân sự',
-            description: 'Quản lý cán bộ y tế',
+            id: "manage-staff",
+            title: "Quản lý nhân sự",
+            description: "Quản lý cán bộ y tế",
             icon: MedicalIcons.nurse,
             color: MedicalColors.accent,
-            action: () => Alert.alert('Quản lý nhân sự', 'Chức năng đang phát triển'),
+            action: () =>
+              Alert.alert("Quản lý nhân sự", "Chức năng đang phát triển"),
           },
         ];
       default:
@@ -206,20 +219,20 @@ export default function Home() {
   const getRoleInfo = () => {
     const roleInfo = {
       parent: {
-        title: 'Phụ huynh',
-        greeting: 'Chăm sóc sức khỏe con em',
+        title: "Phụ huynh",
+        greeting: "Chăm sóc sức khỏe con em",
         icon: RoleColors.parent.icon,
         color: RoleColors.parent.primary,
       },
       medical_staff: {
-        title: 'Cán bộ Y tế',
-        greeting: 'Bảo vệ sức khỏe học sinh',
+        title: "Cán bộ Y tế",
+        greeting: "Bảo vệ sức khỏe học sinh",
         icon: RoleColors.medical_staff.icon,
         color: RoleColors.medical_staff.primary,
       },
       administrator: {
-        title: 'Quản lý',
-        greeting: 'Điều hành hệ thống y tế',
+        title: "Quản lý",
+        greeting: "Điều hành hệ thống y tế",
         icon: RoleColors.administrator.icon,
         color: RoleColors.administrator.primary,
       },
@@ -227,30 +240,78 @@ export default function Home() {
     return roleInfo[userRole];
   };
 
-  const getTrendIcon = (trend: 'up' | 'down' | 'stable') => {
+  const getTrendIcon = (trend: "up" | "down" | "stable") => {
     switch (trend) {
-      case 'up': return '📈';
-      case 'down': return '📉';
-      case 'stable': return '➖';
-      default: return '➖';
+      case "up":
+        return "📈";
+      case "down":
+        return "📉";
+      case "stable":
+        return "➖";
+      default:
+        return "➖";
     }
   };
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'checkup': return MedicalIcons.stethoscope;
-      case 'vaccination': return MedicalIcons.syringe;
-      case 'emergency': return MedicalIcons.alert;
-      case 'report': return MedicalIcons.report;
-      default: return MedicalIcons.info;
+      case "checkup":
+        return MedicalIcons.stethoscope;
+      case "vaccination":
+        return MedicalIcons.syringe;
+      case "emergency":
+        return MedicalIcons.alert;
+      case "report":
+        return MedicalIcons.report;
+      default:
+        return MedicalIcons.info;
     }
   };
 
   const roleInfo = getRoleInfo();
   const quickActions = getQuickActions();
 
+  // Thao tác nhanh cho nurse
+  const nurseActions = [
+    {
+      id: "medical-tools",
+      title: "Khai báo dụng cụ",
+      description: "Thêm/xóa/sửa dụng cụ y tế",
+      icon: MedicalIcons.stethoscope,
+      color: MedicalColors.primary,
+      action: () => router.push("/MedicalTools"),
+    },
+    {
+      id: "event-report",
+      title: "Khai báo sự kiện",
+      description: "Khai báo sự kiện trong trường",
+      icon: MedicalIcons.alert,
+      color: MedicalColors.error,
+      action: () => router.push("/EventReport"),
+    },
+    {
+      id: "vaccination",
+      title: "Quản lý tiêm chủng",
+      description: "Quản lý lịch và báo cáo tiêm chủng",
+      icon: MedicalIcons.syringe,
+      color: MedicalColors.accent,
+      action: () => router.push("/Vaccination"),
+    },
+  ];
+
+  if (!userProfile) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <Text>Đang tải thông tin người dùng...</Text>
+      </View>
+    );
+  }
+
+  console.log("userProfile in Home:", userProfile);
+  console.log("userRole in Home:", userRole);
+
   return (
-    <ScrollView 
+    <ScrollView
       style={styles.container}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
@@ -271,7 +332,9 @@ export default function Home() {
             </View>
           </View>
           <TouchableOpacity style={styles.notificationButton}>
-            <Text style={styles.notificationIcon}>{MedicalIcons.notification}</Text>
+            <Text style={styles.notificationIcon}>
+              {MedicalIcons.notification}
+            </Text>
             <View style={styles.notificationBadge}>
               <Text style={styles.notificationBadgeText}>3</Text>
             </View>
@@ -279,92 +342,122 @@ export default function Home() {
         </View>
       </View>
 
-      {/* Health Metrics Cards */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          {MedicalIcons.health} Tổng quan sức khỏe
-        </Text>
-        <View style={styles.metricsGrid}>
-          {healthMetrics.map((metric) => (
-            <View key={metric.id} style={styles.metricCard}>
-              <View style={styles.metricHeader}>
-                <Text style={styles.metricIcon}>{metric.icon}</Text>
-                <Text style={styles.metricTrend}>
-                  {getTrendIcon(metric.trend)}
-                </Text>
-              </View>
-              <Text style={[styles.metricValue, { color: metric.color }]}>
-                {metric.value}
-              </Text>
-              <Text style={styles.metricTitle}>{metric.title}</Text>
-            </View>
-          ))}
+      {/* Nếu là nurse thì show 3 button riêng */}
+      {userRole === "medical_staff" ? (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>⚡ Thao tác nhanh</Text>
+          <View style={styles.actionsGrid}>
+            {nurseActions.map((action) => (
+              <TouchableOpacity
+                key={action.id}
+                style={[styles.actionCard, { borderLeftColor: action.color }]}
+                onPress={action.action}
+              >
+                <Text style={styles.actionIcon}>{action.icon}</Text>
+                <View style={styles.actionContent}>
+                  <Text style={styles.actionTitle}>{action.title}</Text>
+                  <Text style={styles.actionDescription}>
+                    {action.description}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
-      </View>
+      ) : (
+        <>
+          {/* Health Metrics Cards */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {MedicalIcons.health} Tổng quan sức khỏe
+            </Text>
+            <View style={styles.metricsGrid}>
+              {healthMetrics.map((metric) => (
+                <View key={metric.id} style={styles.metricCard}>
+                  <View style={styles.metricHeader}>
+                    <Text style={styles.metricIcon}>{metric.icon}</Text>
+                    <Text style={styles.metricTrend}>
+                      {getTrendIcon(metric.trend)}
+                    </Text>
+                  </View>
+                  <Text style={[styles.metricValue, { color: metric.color }]}>
+                    {metric.value}
+                  </Text>
+                  <Text style={styles.metricTitle}>{metric.title}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
 
-      {/* Quick Actions */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          ⚡ Thao tác nhanh
-        </Text>
-        <View style={styles.actionsGrid}>
-          {quickActions.map((action) => (
+          {/* Quick Actions */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>⚡ Thao tác nhanh</Text>
+            <View style={styles.actionsGrid}>
+              {quickActions.map((action) => (
+                <TouchableOpacity
+                  key={action.id}
+                  style={[styles.actionCard, { borderLeftColor: action.color }]}
+                  onPress={action.action}
+                >
+                  <Text style={styles.actionIcon}>{action.icon}</Text>
+                  <View style={styles.actionContent}>
+                    <Text style={styles.actionTitle}>{action.title}</Text>
+                    <Text style={styles.actionDescription}>
+                      {action.description}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Recent Activities */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {MedicalIcons.calendar} Hoạt động gần đây
+            </Text>
+            <View style={styles.activitiesList}>
+              {recentActivities.map((activity) => (
+                <View key={activity.id} style={styles.activityItem}>
+                  <View style={styles.activityIcon}>
+                    <Text>{getActivityIcon(activity.type)}</Text>
+                  </View>
+                  <View style={styles.activityContent}>
+                    <Text style={styles.activityTitle}>{activity.title}</Text>
+                    <Text style={styles.activityDescription}>
+                      {activity.description}
+                    </Text>
+                    <Text style={styles.activityTime}>{activity.time}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Emergency Contact */}
+          <View style={[styles.section, styles.emergencySection]}>
+            <View style={styles.emergencyHeader}>
+              <Text style={styles.emergencyIcon}>{MedicalIcons.alert}</Text>
+              <Text style={styles.emergencyTitle}>Liên hệ khẩn cấp</Text>
+            </View>
+            <Text style={styles.emergencyDescription}>
+              Liên hệ ngay với đội ngũ y tế khi có tình huống khẩn cấp
+            </Text>
             <TouchableOpacity
-              key={action.id}
-              style={[styles.actionCard, { borderLeftColor: action.color }]}
-              onPress={action.action}
+              style={styles.emergencyButton}
+              onPress={() =>
+                Alert.alert("Khẩn cấp", "Đã kết nối với y tế trường...")
+              }
             >
-              <Text style={styles.actionIcon}>{action.icon}</Text>
-              <View style={styles.actionContent}>
-                <Text style={styles.actionTitle}>{action.title}</Text>
-                <Text style={styles.actionDescription}>{action.description}</Text>
-              </View>
+              <Text style={styles.emergencyButtonText}>
+                📞 Gọi ngay: 0123-456-789
+              </Text>
             </TouchableOpacity>
-          ))}
-        </View>
-      </View>
+          </View>
 
-      {/* Recent Activities */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          {MedicalIcons.calendar} Hoạt động gần đây
-        </Text>
-        <View style={styles.activitiesList}>
-          {recentActivities.map((activity) => (
-            <View key={activity.id} style={styles.activityItem}>
-              <View style={styles.activityIcon}>
-                <Text>{getActivityIcon(activity.type)}</Text>
-              </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>{activity.title}</Text>
-                <Text style={styles.activityDescription}>{activity.description}</Text>
-                <Text style={styles.activityTime}>{activity.time}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Emergency Contact */}
-      <View style={[styles.section, styles.emergencySection]}>
-        <View style={styles.emergencyHeader}>
-          <Text style={styles.emergencyIcon}>{MedicalIcons.alert}</Text>
-          <Text style={styles.emergencyTitle}>Liên hệ khẩn cấp</Text>
-        </View>
-        <Text style={styles.emergencyDescription}>
-          Liên hệ ngay với đội ngũ y tế khi có tình huống khẩn cấp
-        </Text>
-        <TouchableOpacity 
-          style={styles.emergencyButton}
-          onPress={() => Alert.alert('Khẩn cấp', 'Đã kết nối với y tế trường...')}
-        >
-          <Text style={styles.emergencyButtonText}>
-            📞 Gọi ngay: 0123-456-789
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.bottomPadding} />
+          <View style={styles.bottomPadding} />
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -383,13 +476,13 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 20,
   },
   headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   roleIcon: {
@@ -401,57 +494,57 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     opacity: 0.9,
   },
   roleTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontWeight: "bold",
+    color: "#FFFFFF",
     marginVertical: 2,
   },
   roleGreeting: {
     fontSize: 14,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     opacity: 0.8,
   },
   notificationButton: {
-    position: 'relative',
+    position: "relative",
     padding: 8,
   },
   notificationIcon: {
     fontSize: 24,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
   notificationBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     right: 0,
     backgroundColor: MedicalColors.error,
     borderRadius: 10,
     width: 20,
     height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   notificationBadgeText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   section: {
     padding: 20,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: MedicalColors.textPrimary,
     marginBottom: 15,
   },
   metricsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
   },
   metricCard: {
     backgroundColor: MedicalColors.backgroundCard,
@@ -469,9 +562,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   metricHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 10,
   },
   metricIcon: {
@@ -482,13 +575,13 @@ const styles = StyleSheet.create({
   },
   metricValue: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 5,
   },
   metricTitle: {
     fontSize: 12,
     color: MedicalColors.textSecondary,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   actionsGrid: {
     gap: 12,
@@ -497,8 +590,8 @@ const styles = StyleSheet.create({
     backgroundColor: MedicalColors.backgroundCard,
     borderRadius: 12,
     padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderLeftWidth: 4,
     shadowColor: MedicalColors.shadowLight,
     shadowOffset: {
@@ -518,7 +611,7 @@ const styles = StyleSheet.create({
   },
   actionTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: MedicalColors.textPrimary,
     marginBottom: 4,
   },
@@ -533,8 +626,8 @@ const styles = StyleSheet.create({
     backgroundColor: MedicalColors.backgroundCard,
     borderRadius: 12,
     padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     shadowColor: MedicalColors.shadowLight,
     shadowOffset: {
       width: 0,
@@ -549,8 +642,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: MedicalColors.backgroundSecondary,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 15,
   },
   activityContent: {
@@ -558,7 +651,7 @@ const styles = StyleSheet.create({
   },
   activityTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: MedicalColors.textPrimary,
     marginBottom: 4,
   },
@@ -572,15 +665,15 @@ const styles = StyleSheet.create({
     color: MedicalColors.textMuted,
   },
   emergencySection: {
-    backgroundColor: '#FFF5F5',
+    backgroundColor: "#FFF5F5",
     borderRadius: 12,
     borderWidth: 2,
     borderColor: MedicalColors.error,
     margin: 20,
   },
   emergencyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 10,
   },
   emergencyIcon: {
@@ -589,7 +682,7 @@ const styles = StyleSheet.create({
   },
   emergencyTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: MedicalColors.error,
   },
   emergencyDescription: {
@@ -602,12 +695,12 @@ const styles = StyleSheet.create({
     backgroundColor: MedicalColors.error,
     borderRadius: 8,
     padding: 12,
-    alignItems: 'center',
+    alignItems: "center",
   },
   emergencyButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   bottomPadding: {
     height: 100,
