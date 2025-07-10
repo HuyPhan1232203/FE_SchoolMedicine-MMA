@@ -16,8 +16,6 @@ import { MedicalColors, MedicalIcons, RoleColors } from '../constants/Colors';
 import { useAuth } from '../hooks/useAuth';
 import { auth } from '../lib/firebase';
 
-const { width } = Dimensions.get('window');
-
 interface ApprovalStep {
   id: string;
   title: string;
@@ -28,7 +26,7 @@ interface ApprovalStep {
 
 export default function AccountPending() {
   const { user } = useAuth();
-  const [userRole, setUserRole] = useState<'parent' | 'medical_staff' | 'administrator'>('parent');
+  const [userRole] = useState<'parent' | 'medical_staff' | 'administrator'>('parent');
   const [fadeAnim] = useState(new Animated.Value(0));
   const [pulseAnim] = useState(new Animated.Value(1));
   const [refreshing, setRefreshing] = useState(false);
@@ -59,7 +57,7 @@ export default function AccountPending() {
     pulseAnimation.start();
 
     return () => pulseAnimation.stop();
-  }, []);
+  }, [fadeAnim, pulseAnim]);
 
   const getRoleInfo = () => {
     const roleInfo = {

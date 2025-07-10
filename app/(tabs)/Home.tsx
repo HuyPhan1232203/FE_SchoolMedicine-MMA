@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Alert,
   Dimensions,
@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import CustomHeader from "../../components/CustomHeader";
 import {
   MedicalColors,
   MedicalIcons,
@@ -47,11 +48,9 @@ interface RecentActivity {
 }
 
 export default function Home() {
-  const { user, userProfile } = useAuth();
+  const { userProfile } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const userRole = userProfile?.role || "parent";
-
-  // Thêm hàm điều hướng
   const router = useRouter();
 
   // Mock data - would come from backend
@@ -125,7 +124,7 @@ export default function Home() {
         description: "Đăng ký khám sức khỏe",
         icon: MedicalIcons.stethoscope,
         color: MedicalColors.primary,
-        action: () => Alert.alert("Khám sức khỏe", "Chức năng đang phát triển"),
+        action: () => router.push("/(tabs)/MedicalTools"),
       },
       {
         id: "vaccination",
@@ -133,7 +132,7 @@ export default function Home() {
         description: "Lịch tiêm và đăng ký",
         icon: MedicalIcons.syringe,
         color: MedicalColors.accent,
-        action: () => Alert.alert("Tiêm chủng", "Chức năng đang phát triển"),
+        action: () => router.push("/(tabs)/Vaccination"),
       },
     ];
 
@@ -147,8 +146,7 @@ export default function Home() {
             description: "Xem thông tin sức khỏe",
             icon: MedicalIcons.family,
             color: RoleColors.parent.primary,
-            action: () =>
-              Alert.alert("Sức khỏe con em", "Chức năng đang phát triển"),
+            action: () => router.push("/(tabs)/Report"),
           },
           {
             id: "emergency",
@@ -168,8 +166,7 @@ export default function Home() {
             description: "Quản lý học sinh cần điều trị",
             icon: MedicalIcons.doctor,
             color: RoleColors.medical_staff.primary,
-            action: () =>
-              Alert.alert("Danh sách bệnh nhân", "Chức năng đang phát triển"),
+            action: () => router.push("/(tabs)/Report"),
           },
           {
             id: "medical-record",
@@ -177,8 +174,7 @@ export default function Home() {
             description: "Cập nhật hồ sơ sức khỏe",
             icon: MedicalIcons.report,
             color: MedicalColors.secondary,
-            action: () =>
-              Alert.alert("Hồ sơ y tế", "Chức năng đang phát triển"),
+            action: () => router.push("/(tabs)/EventReport"),
           },
         ];
       case "administrator":
@@ -190,8 +186,7 @@ export default function Home() {
             description: "Báo cáo và phân tích",
             icon: MedicalIcons.report,
             color: RoleColors.administrator.primary,
-            action: () =>
-              Alert.alert("Thống kê y tế", "Chức năng đang phát triển"),
+            action: () => router.push("/(admin)/Dashboard"),
           },
           {
             id: "manage-staff",
@@ -199,8 +194,7 @@ export default function Home() {
             description: "Quản lý cán bộ y tế",
             icon: MedicalIcons.nurse,
             color: MedicalColors.accent,
-            action: () =>
-              Alert.alert("Quản lý nhân sự", "Chức năng đang phát triển"),
+            action: () => router.push("/(admin)/UserManagement"),
           },
         ];
       default:
@@ -311,89 +305,25 @@ export default function Home() {
   console.log("userRole in Home:", userRole);
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header Section */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <View style={styles.userInfo}>
-            <Text style={styles.roleIcon}>{roleInfo.icon}</Text>
-            <View style={styles.userText}>
-              <Text style={styles.greeting}>Xin chào!</Text>
-              <Text style={[styles.roleTitle, { color: roleInfo.color }]}>
-                {roleInfo.title}
-              </Text>
-              <Text style={styles.roleGreeting}>{roleInfo.greeting}</Text>
-            </View>
-          </View>
-          <TouchableOpacity style={styles.notificationButton}>
-            <Text style={styles.notificationIcon}>
-              {MedicalIcons.notification}
-            </Text>
-            <View style={styles.notificationBadge}>
-              <Text style={styles.notificationBadgeText}>3</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Nếu là nurse thì show 3 button riêng */}
-      {userRole === "medical_staff" ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>⚡ Thao tác nhanh</Text>
-          <View style={styles.actionsGrid}>
-            {nurseActions.map((action) => (
-              <TouchableOpacity
-                key={action.id}
-                style={[styles.actionCard, { borderLeftColor: action.color }]}
-                onPress={action.action}
-              >
-                <Text style={styles.actionIcon}>{action.icon}</Text>
-                <View style={styles.actionContent}>
-                  <Text style={styles.actionTitle}>{action.title}</Text>
-                  <Text style={styles.actionDescription}>
-                    {action.description}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      ) : (
-        <>
-          {/* Health Metrics Cards */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              {MedicalIcons.health} Tổng quan sức khỏe
-            </Text>
-            <View style={styles.metricsGrid}>
-              {healthMetrics.map((metric) => (
-                <View key={metric.id} style={styles.metricCard}>
-                  <View style={styles.metricHeader}>
-                    <Text style={styles.metricIcon}>{metric.icon}</Text>
-                    <Text style={styles.metricTrend}>
-                      {getTrendIcon(metric.trend)}
-                    </Text>
-                  </View>
-                  <Text style={[styles.metricValue, { color: metric.color }]}>
-                    {metric.value}
-                  </Text>
-                  <Text style={styles.metricTitle}>{metric.title}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          {/* Quick Actions */}
+    <>
+      <CustomHeader
+        title="Trang chủ"
+        subtitle={roleInfo?.title}
+        icon={<Text style={{ fontSize: 14 }}>{MedicalIcons.health}</Text>}
+      />
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Nếu là nurse thì show 3 button riêng */}
+        {userRole === "medical_staff" ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>⚡ Thao tác nhanh</Text>
             <View style={styles.actionsGrid}>
-              {quickActions.map((action) => (
+              {nurseActions.map((action) => (
                 <TouchableOpacity
                   key={action.id}
                   style={[styles.actionCard, { borderLeftColor: action.color }]}
@@ -410,55 +340,105 @@ export default function Home() {
               ))}
             </View>
           </View>
-
-          {/* Recent Activities */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              {MedicalIcons.calendar} Hoạt động gần đây
-            </Text>
-            <View style={styles.activitiesList}>
-              {recentActivities.map((activity) => (
-                <View key={activity.id} style={styles.activityItem}>
-                  <View style={styles.activityIcon}>
-                    <Text>{getActivityIcon(activity.type)}</Text>
-                  </View>
-                  <View style={styles.activityContent}>
-                    <Text style={styles.activityTitle}>{activity.title}</Text>
-                    <Text style={styles.activityDescription}>
-                      {activity.description}
-                    </Text>
-                    <Text style={styles.activityTime}>{activity.time}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          {/* Emergency Contact */}
-          <View style={[styles.section, styles.emergencySection]}>
-            <View style={styles.emergencyHeader}>
-              <Text style={styles.emergencyIcon}>{MedicalIcons.alert}</Text>
-              <Text style={styles.emergencyTitle}>Liên hệ khẩn cấp</Text>
-            </View>
-            <Text style={styles.emergencyDescription}>
-              Liên hệ ngay với đội ngũ y tế khi có tình huống khẩn cấp
-            </Text>
-            <TouchableOpacity
-              style={styles.emergencyButton}
-              onPress={() =>
-                Alert.alert("Khẩn cấp", "Đã kết nối với y tế trường...")
-              }
-            >
-              <Text style={styles.emergencyButtonText}>
-                📞 Gọi ngay: 0123-456-789
+        ) : (
+          <>
+            {/* Health Metrics Cards */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                {MedicalIcons.health} Tổng quan sức khỏe
               </Text>
-            </TouchableOpacity>
-          </View>
+              <View style={styles.metricsGrid}>
+                {healthMetrics.map((metric) => (
+                  <View key={metric.id} style={styles.metricCard}>
+                    <View style={styles.metricHeader}>
+                      <Text style={styles.metricIcon}>{metric.icon}</Text>
+                      <Text style={styles.metricTrend}>
+                        {getTrendIcon(metric.trend)}
+                      </Text>
+                    </View>
+                    <Text style={[styles.metricValue, { color: metric.color }]}>
+                      {metric.value}
+                    </Text>
+                    <Text style={styles.metricTitle}>{metric.title}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
 
-          <View style={styles.bottomPadding} />
-        </>
-      )}
-    </ScrollView>
+            {/* Quick Actions */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>⚡ Thao tác nhanh</Text>
+              <View style={styles.actionsGrid}>
+                {quickActions.map((action) => (
+                  <TouchableOpacity
+                    key={action.id}
+                    style={[
+                      styles.actionCard,
+                      { borderLeftColor: action.color },
+                    ]}
+                    onPress={action.action}
+                  >
+                    <Text style={styles.actionIcon}>{action.icon}</Text>
+                    <View style={styles.actionContent}>
+                      <Text style={styles.actionTitle}>{action.title}</Text>
+                      <Text style={styles.actionDescription}>
+                        {action.description}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Recent Activities */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>
+                {MedicalIcons.calendar} Hoạt động gần đây
+              </Text>
+              <View style={styles.activitiesList}>
+                {recentActivities.map((activity) => (
+                  <View key={activity.id} style={styles.activityItem}>
+                    <View style={styles.activityIcon}>
+                      <Text>{getActivityIcon(activity.type)}</Text>
+                    </View>
+                    <View style={styles.activityContent}>
+                      <Text style={styles.activityTitle}>{activity.title}</Text>
+                      <Text style={styles.activityDescription}>
+                        {activity.description}
+                      </Text>
+                      <Text style={styles.activityTime}>{activity.time}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Emergency Contact */}
+            <View style={[styles.section, styles.emergencySection]}>
+              <View style={styles.emergencyHeader}>
+                <Text style={styles.emergencyIcon}>{MedicalIcons.alert}</Text>
+                <Text style={styles.emergencyTitle}>Liên hệ khẩn cấp</Text>
+              </View>
+              <Text style={styles.emergencyDescription}>
+                Liên hệ ngay với đội ngũ y tế khi có tình huống khẩn cấp
+              </Text>
+              <TouchableOpacity
+                style={styles.emergencyButton}
+                onPress={() =>
+                  Alert.alert("Khẩn cấp", "Đã kết nối với y tế trường...")
+                }
+              >
+                <Text style={styles.emergencyButtonText}>
+                  📞 Gọi ngay: 0123-456-789
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.bottomPadding} />
+          </>
+        )}
+      </ScrollView>
+    </>
   );
 }
 

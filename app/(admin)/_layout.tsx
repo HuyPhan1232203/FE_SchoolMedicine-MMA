@@ -1,6 +1,6 @@
 import { router, Tabs } from "expo-router";
 import { useEffect } from "react";
-import { Platform } from "react-native";
+import { ActivityIndicator, Platform, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
@@ -38,7 +38,11 @@ export default function AdminLayout() {
     !userProfile ||
     userProfile.role !== UserRole.ADMINISTRATOR
   ) {
-    return null;
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
   }
 
   return (
@@ -64,6 +68,7 @@ export default function AdminLayout() {
         name="Dashboard"
         options={{
           title: "Dashboard",
+          tabBarLabel: "Tổng quan",
           tabBarIcon: ({ color }) => (
             <MaterialIcons name="dashboard" size={24} color={color} />
           ),
@@ -72,18 +77,10 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="UserManagement"
         options={{
-          title: "Quản lý User",
+          title: "User",
+          tabBarLabel: "Người dùng",
           tabBarIcon: ({ color }) => (
             <FontAwesome5 name="users" size={24} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="RequestApproval"
-        options={{
-          title: "Duyệt yêu cầu",
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons name="approval" size={24} color={color} />
           ),
         }}
       />
@@ -91,9 +88,54 @@ export default function AdminLayout() {
         name="SystemConfig"
         options={{
           title: "Cấu hình",
+          tabBarLabel: "Cấu hình",
           tabBarIcon: ({ color }) => (
             <MaterialIcons name="settings" size={24} color={color} />
           ),
+        }}
+      />
+
+      {/* Hidden screens - accessible via navigation but not in tabs */}
+      <Tabs.Screen
+        name="MedicalEvents"
+        options={{
+          href: null, // Hide from tab bar
+          title: "Sự kiện Y tế",
+        }}
+      />
+      <Tabs.Screen
+        name="DrugManagement"
+        options={{
+          href: null, // Hide from tab bar
+          title: "Quản lý Thuốc",
+        }}
+      />
+      <Tabs.Screen
+        name="RequestApproval"
+        options={{
+          href: null, // Hide from tab bar
+          title: "Duyệt yêu cầu",
+        }}
+      />
+      <Tabs.Screen
+        name="AdminImport"
+        options={{
+          href: null, // Hide from tab bar
+          title: "Import",
+        }}
+      />
+      <Tabs.Screen
+        name="ChangePassword"
+        options={{
+          href: null, // Hide from tab bar
+          title: "Đổi mật khẩu",
+        }}
+      />
+      <Tabs.Screen
+        name="Profile"
+        options={{
+          href: null, // Hide from tab bar
+          title: "Hồ sơ",
         }}
       />
     </Tabs>

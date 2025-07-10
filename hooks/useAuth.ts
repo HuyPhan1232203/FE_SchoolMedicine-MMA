@@ -13,12 +13,13 @@ import {
 
 const LOGIN_EXPIRY_MINUTES = 60;
 
-interface AuthState {
+export interface AuthState {
   user: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
   canAccess: boolean;
   accessReason?: string;
+  signOut: () => Promise<void>; // Thêm signOut function
 }
 
 export function useAuth(): AuthState {
@@ -36,8 +37,22 @@ export function useAuth(): AuthState {
 
       if (firebaseUser) {
         try {
-          // Check if email is verified
-          if (!firebaseUser.emailVerified) {
+          // Lấy user profile từ Firestore trước
+          const profile = await getUserProfile(firebaseUser.uid);
+
+          if (!profile) {
+            console.log("User profile not found");
+            setUser(null);
+            setUserProfile(null);
+            setCanAccess(false);
+            setAccessReason("Không tìm thấy thông tin tài khoản");
+            router.replace("/Register"); // Redirect to complete profile
+            setLoading(false);
+            return;
+          }
+
+          // Nếu không phải admin thì mới kiểm tra emailVerified
+          if (!firebaseUser.emailVerified && profile.role !== "administrator") {
             console.log("Email not verified");
             setUser(null);
             setUserProfile(null);
@@ -70,30 +85,9 @@ export function useAuth(): AuthState {
               return;
             }
           } else {
-            // No login time recorded
-            console.log("No login time found");
-            await signOut(auth);
-            setUser(null);
-            setUserProfile(null);
-            setCanAccess(false);
-            setAccessReason("Không tìm thấy thông tin đăng nhập");
-            router.replace("/Login");
-            setLoading(false);
-            return;
-          }
-
-          // Get user profile from Firestore
-          const profile = await getUserProfile(firebaseUser.uid);
-
-          if (!profile) {
-            console.log("User profile not found");
-            setUser(null);
-            setUserProfile(null);
-            setCanAccess(false);
-            setAccessReason("Không tìm thấy thông tin tài khoản");
-            router.replace("/Register"); // Redirect to complete profile
-            setLoading(false);
-            return;
+            // No login time recorded - set current time as login time
+            console.log("No login time found, setting current time");
+            await AsyncStorage.setItem("loginTime", now.toString());
           }
 
           // Check if user can access the system
@@ -116,10 +110,47 @@ export function useAuth(): AuthState {
             ) {
               router.replace("/Login");
             }
+            // else if (profile.mustChangePassword) {
+            //   // Redirect to change password screen
+            //   router.replace("/ChangePassword");
+            // }
           } else if (accessCheck.canAccess) {
             // Update last login time and set status to active
             await updateLastLogin(firebaseUser.uid);
-            console.log("User authenticated and can access system");
+
+            // Log once to reduce spam
+            if (!user || user.uid !== firebaseUser.uid) {
+              console.log("User authenticated and can access system");
+            }
+
+            // Navigate based on user role - ONLY ONCE per login session
+            const currentPath = pathname;
+
+            if (profile.role === "administrator") {
+              // Admin users go to admin dashboard
+              if (
+                currentPath === "/Login" ||
+                currentPath === "/" ||
+                currentPath === "/index" ||
+                currentPath.startsWith("/(tabs)")
+              ) {
+                console.log("Redirecting admin to dashboard");
+                router.replace("/(admin)/Dashboard");
+              }
+              // If already in admin area, don't redirect
+            } else {
+              // Regular users go to main app
+              if (
+                currentPath === "/Login" ||
+                currentPath === "/" ||
+                currentPath === "/index" ||
+                currentPath.startsWith("/(admin)")
+              ) {
+                console.log("Redirecting user to main app");
+                router.replace("/(tabs)/Home");
+              }
+              // If already in user area, don't redirect
+            }
           }
         } catch (error) {
           console.error("Error checking user status:", error);
@@ -148,5 +179,14 @@ export function useAuth(): AuthState {
     loading,
     canAccess,
     accessReason,
+    signOut: async () => {
+      try {
+        await signOut(auth);
+        await AsyncStorage.removeItem("loginTime");
+        router.replace("/Login");
+      } catch (error) {
+        console.error("Error signing out:", error);
+      }
+    },
   };
 }

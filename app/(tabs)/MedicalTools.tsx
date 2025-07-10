@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
+  Dimensions,
   FlatList,
   Modal,
   StyleSheet,
@@ -10,289 +11,400 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import CustomHeader from "../../components/CustomHeader";
 import { MedicalColors, MedicalIcons } from "../../constants/Colors";
-import {
-  addMedicalDevice,
-  deleteMedicalDevice,
-  getMedicalDevices,
-  MedicalDevice,
-  updateMedicalDevice,
-} from "../../services/medicalDeviceService";
+import { useAuth } from "../../hooks/useAuth";
 
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <Text
-      style={[
-        styles.statusBadge,
-        {
-          color:
-            status === "available"
-              ? MedicalColors.success
-              : MedicalColors.error,
-          backgroundColor: status === "available" ? "#E8F8F5" : "#FDEDEC",
-        },
-      ]}
-    >
-      {status === "available" ? "🟢" : "🔴"} {status}
-    </Text>
-  );
+const { width } = Dimensions.get("window");
+
+interface MedicalTool {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  color: string;
+  category: "health_check" | "vital_signs" | "medication" | "emergency";
+  action: () => void;
 }
 
-const emptyDevice = {
-  deviceCode: "",
-  deviceName: "",
-  lastChecked: null,
-  rental: "",
-  quantity: 1,
-  status: "available",
-  kind: "",
-  unit: "cái",
-};
+interface HealthCheckup {
+  id: string;
+  studentId: string;
+  studentName: string;
+  grade: string;
+  checkupType: string;
+  date: string;
+  status: "scheduled" | "in_progress" | "completed" | "cancelled";
+  notes?: string;
+}
 
 export default function MedicalTools() {
-  const [devices, setDevices] = useState<(MedicalDevice & { id: string })[]>(
-    []
+  const { userProfile } = useAuth();
+  const router = useRouter();
+
+  const [showCheckupModal, setShowCheckupModal] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState("");
+  const [checkupType, setCheckupType] = useState("");
+  const [checkupNotes, setCheckupNotes] = useState("");
+  const [activeTab, setActiveTab] = useState<"tools" | "schedule" | "history">(
+    "tools"
   );
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState<any>(emptyDevice);
-  const [formLoading, setFormLoading] = useState(false);
 
-  const fetchDevices = async () => {
-    setLoading(true);
-    try {
-      const data = await getMedicalDevices();
-      setDevices(data as (MedicalDevice & { id: string })[]);
-    } catch (error) {
-      // handle error
+  // Mock data - in real app would come from backend
+  const scheduledCheckups: HealthCheckup[] = [
+    {
+      id: "1",
+      studentId: "HS001",
+      studentName: "Nguyễn Văn An",
+      grade: "10A1",
+      checkupType: "Khám sức khỏe định kỳ",
+      date: "2024-01-16 08:00",
+      status: "scheduled",
+    },
+    {
+      id: "2",
+      studentId: "HS002",
+      studentName: "Trần Thị Bình",
+      grade: "11A2",
+      checkupType: "Kiểm tra huyết áp",
+      date: "2024-01-16 09:00",
+      status: "in_progress",
+      notes: "Học sinh có tiền sử huyết áp cao",
+    },
+    {
+      id: "3",
+      studentId: "HS003",
+      studentName: "Lê Văn Cường",
+      grade: "12B1",
+      checkupType: "Khám sức khỏe thể thao",
+      date: "2024-01-15 14:00",
+      status: "completed",
+      notes: "Đủ điều kiện tham gia thể thao",
+    },
+  ];
+
+  const medicalTools: MedicalTool[] = [
+    {
+      id: "health-check",
+      title: "Khám sức khỏe",
+      description: "Đăng ký và quản lý lịch khám",
+      icon: MedicalIcons.stethoscope,
+      color: MedicalColors.primary,
+      category: "health_check",
+      action: () => setShowCheckupModal(true),
+    },
+    {
+      id: "vital-signs",
+      title: "Dấu hiệu sinh tồn",
+      description: "Đo huyết áp, nhịp tim, nhiệt độ",
+      icon: "🌡️",
+      color: MedicalColors.accent,
+      category: "vital_signs",
+      action: () =>
+        Alert.alert(
+          "Dấu hiệu sinh tồn",
+          "Chức năng đo dấu hiệu sinh tồn sẽ được tích hợp với thiết bị y tế"
+        ),
+    },
+    {
+      id: "medication",
+      title: "Quản lý thuốc",
+      description: "Kê đơn và theo dõi thuốc",
+      icon: MedicalIcons.medicine,
+      color: MedicalColors.secondary,
+      category: "medication",
+      action: () =>
+        Alert.alert("Quản lý thuốc", "Chức năng quản lý thuốc và kê đơn"),
+    },
+    {
+      id: "emergency",
+      title: "Khẩn cấp",
+      description: "Xử lý tình huống khẩn cấp",
+      icon: MedicalIcons.alert,
+      color: MedicalColors.error,
+      category: "emergency",
+      action: () =>
+        Alert.alert(
+          "Khẩn cấp",
+          "Hotline: 0123-456-789\nĐang kết nối với trung tâm y tế..."
+        ),
+    },
+    {
+      id: "vaccination",
+      title: "Tiêm chủng",
+      description: "Lịch tiêm và quản lý vaccine",
+      icon: MedicalIcons.syringe,
+      color: MedicalColors.warning,
+      category: "health_check",
+      action: () => router.push("/(tabs)/Vaccination"),
+    },
+    {
+      id: "records",
+      title: "Hồ sơ y tế",
+      description: "Xem và cập nhật hồ sơ",
+      icon: MedicalIcons.report,
+      color: MedicalColors.info,
+      category: "health_check",
+      action: () => router.push("/(tabs)/EventReport"),
+    },
+  ];
+
+  const handleScheduleCheckup = () => {
+    if (!selectedStudent || !checkupType) {
+      Alert.alert("Lỗi", "Vui lòng điền đầy đủ thông tin");
+      return;
     }
-    setLoading(false);
-  };
 
-  useEffect(() => {
-    fetchDevices();
-  }, []);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchDevices();
-    setRefreshing(false);
-  };
-
-  const openAddModal = () => {
-    setEditId(null);
-    setForm(emptyDevice);
-    setModalVisible(true);
-  };
-
-  const openEditModal = (device: any) => {
-    setEditId(device.id);
-    setForm({ ...device });
-    setModalVisible(true);
-  };
-
-  const handleDelete = (id: string) => {
-    Alert.alert("Xác nhận xóa", "Bạn có chắc chắn muốn xóa thiết bị này?", [
-      { text: "Hủy", style: "cancel" },
-      {
-        text: "Xóa",
-        style: "destructive",
-        onPress: async () => {
-          await deleteMedicalDevice(id);
-          fetchDevices();
+    Alert.alert(
+      "Xác nhận",
+      `Đăng ký khám sức khỏe:\nHọc sinh: ${selectedStudent}\nLoại khám: ${checkupType}`,
+      [
+        { text: "Hủy", style: "cancel" },
+        {
+          text: "Đăng ký",
+          onPress: () => {
+            Alert.alert("Thành công", "Đã đăng ký lịch khám sức khỏe");
+            setShowCheckupModal(false);
+            setSelectedStudent("");
+            setCheckupType("");
+            setCheckupNotes("");
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
-  const handleSubmit = async () => {
-    setFormLoading(true);
-    try {
-      if (editId) {
-        await updateMedicalDevice(editId, form);
-      } else {
-        await addMedicalDevice(form);
-      }
-      setModalVisible(false);
-      fetchDevices();
-    } catch (e) {
-      // handle error
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "scheduled":
+        return MedicalColors.info;
+      case "in_progress":
+        return MedicalColors.warning;
+      case "completed":
+        return MedicalColors.success;
+      case "cancelled":
+        return MedicalColors.error;
+      default:
+        return MedicalColors.textMuted;
     }
-    setFormLoading(false);
   };
 
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={MedicalColors.primary} />
-        <Text style={styles.loadingText}>
-          Đang tải danh sách dụng cụ y tế...
-        </Text>
-      </View>
-    );
-  }
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "scheduled":
+        return "Đã lên lịch";
+      case "in_progress":
+        return "Đang khám";
+      case "completed":
+        return "Hoàn thành";
+      case "cancelled":
+        return "Đã hủy";
+      default:
+        return "Không xác định";
+    }
+  };
 
-  if (!devices.length) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.emptyText}>
-          Không có dụng cụ y tế nào trong hệ thống.
-        </Text>
-        <TouchableOpacity style={styles.reloadButton} onPress={fetchDevices}>
-          <Text style={styles.reloadButtonText}>🔄 Tải lại</Text>
-        </TouchableOpacity>
+  const renderMedicalTool = ({ item }: { item: MedicalTool }) => (
+    <TouchableOpacity
+      style={[styles.toolCard, { borderLeftColor: item.color }]}
+      onPress={item.action}
+    >
+      <View style={styles.toolContent}>
+        <Text style={styles.toolIcon}>{item.icon}</Text>
+        <View style={styles.toolInfo}>
+          <Text style={styles.toolTitle}>{item.title}</Text>
+          <Text style={styles.toolDescription}>{item.description}</Text>
+        </View>
       </View>
-    );
-  }
+      <Text style={styles.toolArrow}>→</Text>
+    </TouchableOpacity>
+  );
+
+  const renderCheckupItem = ({ item }: { item: HealthCheckup }) => (
+    <View
+      style={[
+        styles.checkupCard,
+        { borderLeftColor: getStatusColor(item.status) },
+      ]}
+    >
+      <View style={styles.checkupHeader}>
+        <Text style={styles.checkupStudent}>{item.studentName}</Text>
+        <View
+          style={[
+            styles.statusBadge,
+            { backgroundColor: getStatusColor(item.status) + "20" },
+          ]}
+        >
+          <Text
+            style={[styles.statusText, { color: getStatusColor(item.status) }]}
+          >
+            {getStatusText(item.status)}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.checkupDetails}>
+        <Text style={styles.checkupInfo}>Mã HS: {item.studentId}</Text>
+        <Text style={styles.checkupInfo}>Lớp: {item.grade}</Text>
+        <Text style={styles.checkupInfo}>Loại khám: {item.checkupType}</Text>
+        <Text style={styles.checkupInfo}>Thời gian: {item.date}</Text>
+        {item.notes && (
+          <Text style={styles.checkupNotes}>Ghi chú: {item.notes}</Text>
+        )}
+      </View>
+    </View>
+  );
+
+  const TabButton = ({
+    title,
+    isActive,
+    onPress,
+  }: {
+    title: string;
+    isActive: boolean;
+    onPress: () => void;
+  }) => (
+    <TouchableOpacity
+      style={[styles.tabButton, isActive && styles.activeTabButton]}
+      onPress={onPress}
+    >
+      <Text
+        style={[styles.tabButtonText, isActive && styles.activeTabButtonText]}
+      >
+        {title}
+      </Text>
+    </TouchableOpacity>
+  );
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>
-        {MedicalIcons.medicine} Danh sách dụng cụ y tế
-      </Text>
-      <FlatList
-        data={devices}
-        keyExtractor={(item) => item.id}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-        ListEmptyComponent={
-          <View style={styles.centered}>
-            <Text style={styles.emptyText}>
-              Không có dụng cụ y tế nào trong hệ thống.
-            </Text>
-            <TouchableOpacity
-              style={styles.reloadButton}
-              onPress={fetchDevices}
-            >
-              <Text style={styles.reloadButtonText}>🔄 Tải lại</Text>
-            </TouchableOpacity>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.deviceName}>{item.deviceName}</Text>
-              <StatusBadge status={item.status} />
-            </View>
-            <View style={styles.cardBody}>
-              <Text style={styles.info}>
-                <Text style={styles.label}>Mã:</Text> {item.deviceCode}
-              </Text>
-              <Text style={styles.info}>
-                <Text style={styles.label}>Loại:</Text> {item.kind}
-              </Text>
-              <Text style={styles.info}>
-                <Text style={styles.label}>Số lượng:</Text> {item.quantity}{" "}
-                {item.unit}
-              </Text>
-              <Text style={styles.info}>
-                <Text style={styles.label}>Vị trí:</Text> {item.rental}
-              </Text>
-              <Text style={styles.info}>
-                <Text style={styles.label}>Lần kiểm tra cuối:</Text>{" "}
-                {item.lastChecked
-                  ? new Date(item.lastChecked.seconds * 1000).toLocaleString()
-                  : "-"}
-              </Text>
-            </View>
-            <View style={styles.cardActions}>
-              <TouchableOpacity
-                style={styles.editBtn}
-                onPress={() => openEditModal(item)}
-              >
-                <Text style={styles.editBtnText}>✏️ Sửa</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.deleteBtn}
-                onPress={() => handleDelete(item.id)}
-              >
-                <Text style={styles.deleteBtnText}>🗑️ Xóa</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-        contentContainerStyle={{ paddingBottom: 80 }}
+      {/* Header */}
+      <CustomHeader
+        title="Công cụ Y tế"
+        subtitle="Quản lý khám sức khỏe và y tế"
+        icon={<Text style={{ fontSize: 14 }}>{MedicalIcons.stethoscope}</Text>}
+        showBack={true}
+        onBack={() => router.back()}
       />
-      <TouchableOpacity style={styles.fab} onPress={openAddModal}>
-        <Text style={styles.fabIcon}>＋</Text>
-      </TouchableOpacity>
+
+      {/* Tab Navigation */}
+      <View style={styles.tabContainer}>
+        <TabButton
+          title="Công cụ"
+          isActive={activeTab === "tools"}
+          onPress={() => setActiveTab("tools")}
+        />
+        <TabButton
+          title="Lịch khám"
+          isActive={activeTab === "schedule"}
+          onPress={() => setActiveTab("schedule")}
+        />
+        <TabButton
+          title="Lịch sử"
+          isActive={activeTab === "history"}
+          onPress={() => setActiveTab("history")}
+        />
+      </View>
+
+      {/* Content */}
+      {activeTab === "tools" && (
+        <FlatList
+          data={medicalTools}
+          renderItem={renderMedicalTool}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.toolsList}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
+
+      {activeTab === "schedule" && (
+        <FlatList
+          data={scheduledCheckups.filter(
+            (c) => c.status === "scheduled" || c.status === "in_progress"
+          )}
+          renderItem={renderCheckupItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.checkupList}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
+
+      {activeTab === "history" && (
+        <FlatList
+          data={scheduledCheckups.filter(
+            (c) => c.status === "completed" || c.status === "cancelled"
+          )}
+          renderItem={renderCheckupItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.checkupList}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
+
+      {/* Schedule Checkup Modal */}
       <Modal
-        visible={modalVisible}
+        visible={showCheckupModal}
         animationType="slide"
-        transparent
-        onRequestClose={() => setModalVisible(false)}
+        transparent={true}
+        onRequestClose={() => setShowCheckupModal(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {editId ? "Sửa dụng cụ" : "Thêm dụng cụ mới"}
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Tên dụng cụ"
-              value={form.deviceName}
-              onChangeText={(t) =>
-                setForm((f: any) => ({ ...f, deviceName: t }))
-              }
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Mã dụng cụ"
-              value={form.deviceCode}
-              onChangeText={(t) =>
-                setForm((f: any) => ({ ...f, deviceCode: t }))
-              }
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Loại"
-              value={form.kind}
-              onChangeText={(t) => setForm((f: any) => ({ ...f, kind: t }))}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Số lượng"
-              keyboardType="numeric"
-              value={form.quantity?.toString()}
-              onChangeText={(t) =>
-                setForm((f: any) => ({ ...f, quantity: parseInt(t) || 0 }))
-              }
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Đơn vị"
-              value={form.unit}
-              onChangeText={(t) => setForm((f: any) => ({ ...f, unit: t }))}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Vị trí (Phòng, tủ...)"
-              value={form.rental}
-              onChangeText={(t) => setForm((f: any) => ({ ...f, rental: t }))}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Trạng thái (available/unavailable)"
-              value={form.status}
-              onChangeText={(t) => setForm((f: any) => ({ ...f, status: t }))}
-            />
-            <View style={styles.modalActions}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Đăng ký khám sức khỏe</Text>
               <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => setModalVisible(false)}
+                style={styles.closeButton}
+                onPress={() => setShowCheckupModal(false)}
               >
-                <Text style={styles.cancelBtnText}>Hủy</Text>
+                <Text style={styles.closeButtonText}>×</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBody}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Mã học sinh</Text>
+                <TextInput
+                  style={styles.input}
+                  value={selectedStudent}
+                  onChangeText={setSelectedStudent}
+                  placeholder="Nhập mã học sinh (VD: HS001)"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Loại khám</Text>
+                <TextInput
+                  style={styles.input}
+                  value={checkupType}
+                  onChangeText={setCheckupType}
+                  placeholder="Loại khám sức khỏe"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Ghi chú (tùy chọn)</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={checkupNotes}
+                  onChangeText={setCheckupNotes}
+                  placeholder="Ghi chú thêm..."
+                  multiline
+                  numberOfLines={3}
+                />
+              </View>
+            </View>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowCheckupModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Hủy</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.saveBtn}
-                onPress={handleSubmit}
-                disabled={formLoading}
+                style={styles.confirmButton}
+                onPress={handleScheduleCheckup}
               >
-                <Text style={styles.saveBtnText}>
-                  {formLoading ? "Đang lưu..." : "Lưu"}
-                </Text>
+                <Text style={styles.confirmButtonText}>Đăng ký</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -305,199 +417,256 @@ export default function MedicalTools() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: MedicalColors.backgroundSecondary,
-    padding: 16,
+    backgroundColor: MedicalColors.background,
+  },
+  header: {
+    backgroundColor: MedicalColors.primary,
+    paddingTop: 60,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  backButton: {
+    marginRight: 15,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  backButtonText: {
+    color: "white",
+    fontSize: 20,
+    fontWeight: "bold",
+  },
+  headerContent: {
+    flex: 1,
+  },
+  headerIcon: {
+    fontSize: 24,
+    marginBottom: 5,
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "bold",
-    color: MedicalColors.primary,
-    marginBottom: 18,
-    textAlign: "center",
+    color: "white",
+    marginBottom: 5,
   },
-  card: {
-    backgroundColor: MedicalColors.backgroundCard,
-    borderRadius: 14,
-    padding: 18,
-    marginBottom: 16,
+  subtitle: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.8)",
+  },
+  tabContainer: {
+    flexDirection: "row",
+    backgroundColor: "white",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: MedicalColors.border,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+    borderRadius: 8,
+    marginHorizontal: 5,
+  },
+  activeTabButton: {
+    backgroundColor: MedicalColors.primary + "20",
+  },
+  tabButtonText: {
+    fontSize: 14,
+    color: MedicalColors.textSecondary,
+    fontWeight: "500",
+  },
+  activeTabButtonText: {
+    color: MedicalColors.primary,
+    fontWeight: "bold",
+  },
+  toolsList: {
+    padding: 20,
+  },
+  toolCard: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 15,
+    flexDirection: "row",
+    alignItems: "center",
+    borderLeftWidth: 4,
     shadowColor: MedicalColors.shadowLight,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  cardHeader: {
+  toolContent: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  toolIcon: {
+    fontSize: 32,
+    marginRight: 15,
+  },
+  toolInfo: {
+    flex: 1,
+  },
+  toolTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: MedicalColors.textPrimary,
+    marginBottom: 5,
+  },
+  toolDescription: {
+    fontSize: 14,
+    color: MedicalColors.textSecondary,
+  },
+  toolArrow: {
+    fontSize: 20,
+    color: MedicalColors.textMuted,
+  },
+  checkupList: {
+    padding: 20,
+  },
+  checkupCard: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 15,
+    borderLeftWidth: 4,
+    shadowColor: MedicalColors.shadowLight,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  checkupHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  deviceName: {
-    fontSize: 18,
-    fontWeight: "600",
+  checkupStudent: {
+    fontSize: 16,
+    fontWeight: "bold",
     color: MedicalColors.textPrimary,
-    flex: 1,
   },
   statusBadge: {
-    fontSize: 14,
-    fontWeight: "bold",
-    borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    marginLeft: 8,
-    overflow: "hidden",
+    borderRadius: 12,
   },
-  cardBody: {
-    marginTop: 4,
+  statusText: {
+    fontSize: 12,
+    fontWeight: "500",
   },
-  info: {
-    fontSize: 15,
-    color: MedicalColors.textSecondary,
-    marginBottom: 2,
+  checkupDetails: {
+    gap: 5,
   },
-  label: {
-    fontWeight: "600",
-    color: MedicalColors.textPrimary,
-  },
-  cardActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 10,
-    gap: 8,
-  },
-  editBtn: {
-    backgroundColor: MedicalColors.info,
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 6,
-  },
-  editBtnText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  deleteBtn: {
-    backgroundColor: MedicalColors.error,
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  deleteBtnText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  fab: {
-    position: "absolute",
-    right: 24,
-    bottom: 32,
-    backgroundColor: MedicalColors.primary,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: MedicalColors.shadowMedium,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  fabIcon: {
-    color: "#fff",
-    fontSize: 32,
-    fontWeight: "bold",
-  },
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: MedicalColors.backgroundSecondary,
-    padding: 24,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
+  checkupInfo: {
+    fontSize: 14,
     color: MedicalColors.textSecondary,
   },
-  emptyText: {
-    fontSize: 17,
+  checkupNotes: {
+    fontSize: 14,
     color: MedicalColors.textMuted,
-    marginBottom: 18,
-    textAlign: "center",
-  },
-  reloadButton: {
-    backgroundColor: MedicalColors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-  },
-  reloadButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 15,
+    fontStyle: "italic",
+    marginTop: 5,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.2)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
   },
   modalContent: {
-    backgroundColor: "#fff",
+    backgroundColor: "white",
     borderRadius: 16,
-    padding: 24,
-    width: "90%",
-    maxWidth: 400,
-    shadowColor: MedicalColors.shadowMedium,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 10,
+    width: width - 40,
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: MedicalColors.border,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "bold",
-    color: MedicalColors.primary,
-    marginBottom: 18,
-    textAlign: "center",
-  },
-  input: {
-    borderWidth: 1.5,
-    borderColor: MedicalColors.inputBorder,
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 12,
-    backgroundColor: MedicalColors.inputBackground,
     color: MedicalColors.textPrimary,
   },
-  modalActions: {
+  closeButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: MedicalColors.border,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeButtonText: {
+    fontSize: 20,
+    color: MedicalColors.textSecondary,
+  },
+  modalBody: {
+    padding: 20,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: MedicalColors.textPrimary,
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: MedicalColors.border,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: MedicalColors.inputBackground,
+  },
+  textArea: {
+    height: 80,
+    textAlignVertical: "top",
+  },
+  modalFooter: {
     flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 10,
-    gap: 10,
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: MedicalColors.border,
+    gap: 15,
   },
-  cancelBtn: {
-    backgroundColor: MedicalColors.textMuted,
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 12,
     borderRadius: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    marginRight: 8,
+    borderWidth: 1,
+    borderColor: MedicalColors.border,
+    alignItems: "center",
   },
-  cancelBtnText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 15,
+  cancelButtonText: {
+    fontSize: 16,
+    color: MedicalColors.textSecondary,
+    fontWeight: "500",
   },
-  saveBtn: {
+  confirmButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
     backgroundColor: MedicalColors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    alignItems: "center",
   },
-  saveBtnText: {
-    color: "#fff",
+  confirmButtonText: {
+    fontSize: 16,
+    color: "white",
     fontWeight: "bold",
-    fontSize: 15,
   },
 });

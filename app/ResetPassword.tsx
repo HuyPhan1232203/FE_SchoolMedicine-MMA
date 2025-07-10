@@ -1,19 +1,30 @@
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
-import { Dimensions, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useState } from "react";
+import {
+  Dimensions,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import CustomHeader from "../components/CustomHeader";
 import { ErrorMessage, SuccessMessage } from "../components/ErrorMessage";
+import { MedicalIcons } from "../constants/Colors";
 import { resetPassword } from "../services/authService";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 export default function ResetPassword() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({
     email: "",
-    general: ""
+    general: "",
   });
-  const [generalErrorType, setGeneralErrorType] = useState<'auth' | 'network' | 'validation' | 'unknown'>('unknown');
+  const [generalErrorType, setGeneralErrorType] = useState<
+    "auth" | "network" | "validation" | "unknown"
+  >("unknown");
   const [successMessage, setSuccessMessage] = useState("");
   const router = useRouter();
 
@@ -30,10 +41,10 @@ export default function ResetPassword() {
 
   const handleEmailChange = (text: string) => {
     setEmail(text);
-    setErrors(prev => ({
+    setErrors((prev) => ({
       ...prev,
       email: validateEmail(text),
-      general: ""
+      general: "",
     }));
     setSuccessMessage("");
   };
@@ -49,7 +60,7 @@ export default function ResetPassword() {
 
     setErrors({
       email: emailError,
-      general: ""
+      general: "",
     });
 
     if (emailError) {
@@ -58,38 +69,41 @@ export default function ResetPassword() {
 
     setLoading(true);
     setSuccessMessage("");
-    
+
     try {
       await resetPassword(email.trim());
-      
+
       // Show success message
       setSuccessMessage(
         "Email đặt lại mật khẩu đã được gửi! Vui lòng kiểm tra hộp thư của bạn (kể cả thư mục spam)."
       );
       setErrors({ email: "", general: "" });
-      
+
       // Tự động quay lại Login sau 5 giây
       setTimeout(() => {
         router.back();
       }, 5000);
-      
     } catch (error: any) {
-      console.error('Reset password error:', error);
-      
+      console.error("Reset password error:", error);
+
       // Determine error type for better UI display
-      let errorType: 'auth' | 'network' | 'validation' | 'unknown' = 'auth';
-      const errorMessage = error.message || 'Có lỗi xảy ra khi gửi email đặt lại mật khẩu!';
-      
-      if (errorMessage.includes('mạng') || errorMessage.includes('kết nối')) {
-        errorType = 'network';
-      } else if (errorMessage.includes('không tìm thấy') || errorMessage.includes('không tồn tại')) {
-        errorType = 'validation';
+      let errorType: "auth" | "network" | "validation" | "unknown" = "auth";
+      const errorMessage =
+        error.message || "Có lỗi xảy ra khi gửi email đặt lại mật khẩu!";
+
+      if (errorMessage.includes("mạng") || errorMessage.includes("kết nối")) {
+        errorType = "network";
+      } else if (
+        errorMessage.includes("không tìm thấy") ||
+        errorMessage.includes("không tồn tại")
+      ) {
+        errorType = "validation";
       }
-      
+
       setGeneralErrorType(errorType);
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        general: errorMessage
+        general: errorMessage,
       }));
     } finally {
       setLoading(false);
@@ -97,12 +111,17 @@ export default function ResetPassword() {
   };
 
   const clearMessages = () => {
-    setErrors(prev => ({ ...prev, general: "" }));
+    setErrors((prev) => ({ ...prev, general: "" }));
     setSuccessMessage("");
   };
 
   return (
     <View style={styles.container}>
+      <CustomHeader
+        title="Đặt lại mật khẩu"
+        subtitle="Nhập email để đặt lại mật khẩu"
+        icon={<Text style={{ fontSize: 14 }}>{MedicalIcons.security}</Text>}
+      />
       <View style={styles.resetCard}>
         <View style={styles.header}>
           <Text style={styles.title}>Đặt lại mật khẩu 🔑</Text>
@@ -118,7 +137,7 @@ export default function ResetPassword() {
               style={[
                 styles.input,
                 errors.email ? styles.inputError : null,
-                successMessage ? styles.inputSuccess : null
+                successMessage ? styles.inputSuccess : null,
               ]}
               placeholder="Nhập email của bạn"
               placeholderTextColor="#999"
@@ -134,14 +153,14 @@ export default function ResetPassword() {
           </View>
 
           {/* Enhanced error display */}
-          <ErrorMessage 
+          <ErrorMessage
             error={errors.general}
             type={generalErrorType}
             onDismiss={clearMessages}
           />
 
           {/* Success message */}
-          <SuccessMessage 
+          <SuccessMessage
             message={successMessage}
             onDismiss={() => setSuccessMessage("")}
           />
@@ -156,8 +175,9 @@ export default function ResetPassword() {
 
           <TouchableOpacity
             style={[
-              styles.resetButton, 
-              (loading || !isFormValid() || successMessage) && styles.resetButtonDisabled
+              styles.resetButton,
+              (loading || !isFormValid() || successMessage) &&
+                styles.resetButtonDisabled,
             ]}
             onPress={handleResetPassword}
             disabled={loading || !isFormValid() || !!successMessage}
@@ -169,8 +189,8 @@ export default function ResetPassword() {
         </View>
 
         <View style={styles.footer}>
-          <TouchableOpacity 
-            style={styles.backButton} 
+          <TouchableOpacity
+            style={styles.backButton}
             onPress={() => router.back()}
           >
             <Text style={styles.backButtonText}>← Quay lại đăng nhập</Text>
@@ -178,10 +198,18 @@ export default function ResetPassword() {
 
           <View style={styles.helpContainer}>
             <Text style={styles.helpTitle}>💡 Lưu ý:</Text>
-            <Text style={styles.helpText}>• Kiểm tra thư mục Spam nếu không thấy email</Text>
-            <Text style={styles.helpText}>• Link đặt lại mật khẩu có hiệu lực trong 1 giờ</Text>
-            <Text style={styles.helpText}>• Nếu không nhận được email, thử gửi lại</Text>
-            <Text style={styles.helpText}>• Email có thể mất 1-2 phút để đến hộp thư</Text>
+            <Text style={styles.helpText}>
+              • Kiểm tra thư mục Spam nếu không thấy email
+            </Text>
+            <Text style={styles.helpText}>
+              • Link đặt lại mật khẩu có hiệu lực trong 1 giờ
+            </Text>
+            <Text style={styles.helpText}>
+              • Nếu không nhận được email, thử gửi lại
+            </Text>
+            <Text style={styles.helpText}>
+              • Email có thể mất 1-2 phút để đến hộp thư
+            </Text>
           </View>
         </View>
       </View>
@@ -190,20 +218,20 @@ export default function ResetPassword() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
+  container: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
-    backgroundColor: '#f8f9fa'
+    backgroundColor: "#f8f9fa",
   },
   resetCard: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 20,
     padding: 30,
     width: width * 0.9,
     maxWidth: 400,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -213,20 +241,20 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 30,
   },
-  title: { 
-    fontSize: 28, 
-    fontWeight: "bold", 
-    color: '#2c3e50',
+  title: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: "#2c3e50",
     textAlign: "center",
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
     textAlign: "center",
-    color: '#7f8c8d',
+    color: "#7f8c8d",
     lineHeight: 22,
   },
   formContainer: {
@@ -237,19 +265,19 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#2c3e50',
+    fontWeight: "600",
+    color: "#2c3e50",
     marginBottom: 8,
   },
-  input: { 
-    borderWidth: 2, 
-    borderColor: "#e1e8ed", 
-    borderRadius: 12, 
-    padding: 16, 
+  input: {
+    borderWidth: 2,
+    borderColor: "#e1e8ed",
+    borderRadius: 12,
+    padding: 16,
     fontSize: 16,
-    backgroundColor: '#fff',
-    color: '#2c3e50',
-    shadowColor: '#000',
+    backgroundColor: "#fff",
+    color: "#2c3e50",
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 1,
@@ -259,41 +287,41 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   inputError: {
-    borderColor: '#e74c3c',
+    borderColor: "#e74c3c",
     borderWidth: 2,
   },
   inputSuccess: {
-    borderColor: '#27ae60',
+    borderColor: "#27ae60",
     borderWidth: 2,
   },
   errorText: {
-    color: '#e74c3c',
+    color: "#e74c3c",
     fontSize: 12,
     marginTop: 5,
     marginLeft: 5,
   },
   redirectInfo: {
-    backgroundColor: '#e8f5e8',
+    backgroundColor: "#e8f5e8",
     borderRadius: 8,
     padding: 10,
     marginBottom: 15,
     borderLeftWidth: 4,
-    borderLeftColor: '#27ae60',
+    borderLeftColor: "#27ae60",
   },
   redirectText: {
-    color: '#2d5a2d',
+    color: "#2d5a2d",
     fontSize: 12,
-    textAlign: 'center',
-    fontStyle: 'italic',
+    textAlign: "center",
+    fontStyle: "italic",
   },
   resetButton: {
-    backgroundColor: '#e67e22',
+    backgroundColor: "#e67e22",
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 10,
-    shadowColor: '#e67e22',
+    shadowColor: "#e67e22",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -307,13 +335,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
   },
   resetButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   footer: {
     borderTopWidth: 1,
-    borderTopColor: '#e1e8ed',
+    borderTopColor: "#e1e8ed",
     paddingTop: 20,
   },
   backButton: {
@@ -323,23 +351,23 @@ const styles = StyleSheet.create({
   backButtonText: {
     color: "#3498db",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   helpContainer: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: "#f8f9fa",
     borderRadius: 8,
     padding: 15,
   },
   helpTitle: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#2c3e50',
+    fontWeight: "600",
+    color: "#2c3e50",
     marginBottom: 8,
   },
   helpText: {
     fontSize: 12,
-    color: '#7f8c8d',
+    color: "#7f8c8d",
     marginBottom: 4,
     lineHeight: 18,
   },
-}); 
+});

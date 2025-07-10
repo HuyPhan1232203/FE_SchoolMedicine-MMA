@@ -1,19 +1,20 @@
-import React, { useState } from 'react';
+import { useEffect, useState } from "react";
 import {
-    Alert,
-    Dimensions,
-    Modal,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from 'react-native';
-import { MedicalColors, MedicalIcons } from '../../constants/Colors';
-import { useAuth } from '../../hooks/useAuth';
+  Alert,
+  Dimensions,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import CustomHeader from "../../components/CustomHeader";
+import { MedicalColors, MedicalIcons } from "../../constants/Colors";
+import { useAuth } from "../../hooks/useAuth";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 interface ReportCard {
   id: string;
@@ -21,7 +22,7 @@ interface ReportCard {
   description: string;
   icon: string;
   value: string;
-  trend: 'up' | 'down' | 'stable';
+  trend: "up" | "down" | "stable";
   color: string;
   period: string;
 }
@@ -40,67 +41,80 @@ interface RecentReport {
   id: string;
   title: string;
   date: string;
-  type: 'monthly' | 'weekly' | 'annual' | 'emergency';
-  status: 'completed' | 'pending' | 'draft';
+  type: "monthly" | "weekly" | "annual" | "emergency";
+  status: "completed" | "pending" | "draft";
   author: string;
 }
 
 export default function Report() {
-  const { user } = useAuth();
+  const { userProfile } = useAuth();
+
+  useEffect(() => {
+    if (userProfile && userProfile.role === "administrator") {
+      // Redirect to Dashboard if user is an administrator
+      // This logic is now handled by the CustomHeader component
+    }
+  }, [userProfile]);
+
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedPeriod, setSelectedPeriod] = useState('this_month');
-  const [userRole, setUserRole] = useState<'parent' | 'medical_staff' | 'administrator'>('medical_staff');
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [selectedReport, setSelectedReport] = useState<RecentReport | null>(null);
+  const [selectedReport, setSelectedReport] = useState<RecentReport | null>(
+    null
+  );
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "statistics" | "reports"
+  >("overview");
+
+  const userRole = userProfile?.role || "parent";
 
   // Mock data - would come from backend
   const reportCards: ReportCard[] = [
     {
-      id: '1',
-      title: 'Khám sức khỏe định kỳ',
-      description: 'Tổng số học sinh đã khám',
+      id: "1",
+      title: "Khám sức khỏe định kỳ",
+      description: "Tổng số học sinh đã khám",
       icon: MedicalIcons.stethoscope,
-      value: '342/350',
-      trend: 'up',
+      value: "342/350",
+      trend: "up",
       color: MedicalColors.success,
-      period: 'Tháng này',
+      period: "Tháng này",
     },
     {
-      id: '2',
-      title: 'Tiêm chủng đầy đủ',
-      description: 'Học sinh hoàn thành tiêm chủng',
+      id: "2",
+      title: "Tiêm chủng đầy đủ",
+      description: "Học sinh hoàn thành tiêm chủng",
       icon: MedicalIcons.syringe,
-      value: '95.2%',
-      trend: 'up',
+      value: "95.2%",
+      trend: "up",
       color: MedicalColors.primary,
-      period: 'Năm học 2024',
+      period: "Năm học 2024",
     },
     {
-      id: '3',
-      title: 'Trường hợp cần theo dõi',
-      description: 'Học sinh cần chăm sóc đặc biệt',
+      id: "3",
+      title: "Trường hợp cần theo dõi",
+      description: "Học sinh cần chăm sóc đặc biệt",
       icon: MedicalIcons.warning,
-      value: '23',
-      trend: 'down',
+      value: "23",
+      trend: "down",
       color: MedicalColors.warning,
-      period: 'Hiện tại',
+      period: "Hiện tại",
     },
     {
-      id: '4',
-      title: 'Tình huống khẩn cấp',
-      description: 'Sự cố y tế trong tháng',
+      id: "4",
+      title: "Tình huống khẩn cấp",
+      description: "Sự cố y tế trong tháng",
       icon: MedicalIcons.alert,
-      value: '2',
-      trend: 'stable',
+      value: "2",
+      trend: "stable",
       color: MedicalColors.error,
-      period: 'Tháng này',
+      period: "Tháng này",
     },
   ];
 
   const healthStatistics: HealthStatistic[] = [
     {
-      id: '1',
-      category: 'Khối 6',
+      id: "1",
+      category: "Khối 10",
       total: 120,
       healthy: 115,
       needsAttention: 4,
@@ -108,8 +122,8 @@ export default function Report() {
       percentage: 95.8,
     },
     {
-      id: '2',
-      category: 'Khối 7',
+      id: "2",
+      category: "Khối 11",
       total: 118,
       healthy: 110,
       needsAttention: 6,
@@ -117,8 +131,8 @@ export default function Report() {
       percentage: 93.2,
     },
     {
-      id: '3',
-      category: 'Khối 8',
+      id: "3",
+      category: "Khối 12",
       total: 112,
       healthy: 105,
       needsAttention: 5,
@@ -129,28 +143,28 @@ export default function Report() {
 
   const recentReports: RecentReport[] = [
     {
-      id: '1',
-      title: 'Báo cáo sức khỏe tháng 11/2024',
-      date: '30/11/2024',
-      type: 'monthly',
-      status: 'completed',
-      author: 'BS. Nguyễn Thị Lan',
+      id: "1",
+      title: "Báo cáo sức khỏe tháng 12/2024",
+      date: "30/12/2024",
+      type: "monthly",
+      status: "completed",
+      author: "BS. Nguyễn Thị Lan",
     },
     {
-      id: '2',
-      title: 'Thống kê tiêm chủng quý IV',
-      date: '25/11/2024',
-      type: 'monthly',
-      status: 'pending',
-      author: 'Y tá Trần Văn Nam',
+      id: "2",
+      title: "Thống kê tiêm chủng quý IV",
+      date: "25/12/2024",
+      type: "monthly",
+      status: "pending",
+      author: "Y tá Trần Văn Nam",
     },
     {
-      id: '3',
-      title: 'Báo cáo sự cố y tế tuần',
-      date: '22/11/2024',
-      type: 'weekly',
-      status: 'completed',
-      author: 'Trưởng phòng Y tế',
+      id: "3",
+      title: "Báo cáo sự cố y tế tuần",
+      date: "22/12/2024",
+      type: "weekly",
+      status: "completed",
+      author: "Trưởng phòng Y tế",
     },
   ];
 
@@ -161,61 +175,58 @@ export default function Report() {
     }, 2000);
   };
 
-  const getTrendIcon = (trend: 'up' | 'down' | 'stable') => {
+  const getTrendIcon = (trend: "up" | "down" | "stable") => {
     switch (trend) {
-      case 'up': return '📈';
-      case 'down': return '📉';
-      case 'stable': return '➖';
-      default: return '➖';
+      case "up":
+        return "📈";
+      case "down":
+        return "📉";
+      case "stable":
+        return "➖";
+      default:
+        return "➖";
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return MedicalColors.success;
-      case 'pending': return MedicalColors.warning;
-      case 'draft': return MedicalColors.textMuted;
-      default: return MedicalColors.textSecondary;
+      case "completed":
+        return MedicalColors.success;
+      case "pending":
+        return MedicalColors.warning;
+      case "draft":
+        return MedicalColors.textMuted;
+      default:
+        return MedicalColors.textSecondary;
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'completed': return 'Hoàn thành';
-      case 'pending': return 'Đang xử lý';
-      case 'draft': return 'Nháp';
-      default: return 'Không xác định';
+      case "completed":
+        return "Hoàn thành";
+      case "pending":
+        return "Đang xử lý";
+      case "draft":
+        return "Nháp";
+      default:
+        return "Không xác định";
     }
   };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'monthly': return '📅';
-      case 'weekly': return '📋';
-      case 'annual': return '📊';
-      case 'emergency': return '🚨';
-      default: return '📄';
+      case "monthly":
+        return "📅";
+      case "weekly":
+        return "📋";
+      case "annual":
+        return "📊";
+      case "emergency":
+        return "🚨";
+      default:
+        return "📄";
     }
-  };
-
-  const generateReport = (type: 'health' | 'vaccination' | 'emergency' | 'comprehensive') => {
-    const reportTypes = {
-      health: 'Báo cáo sức khỏe tổng quát',
-      vaccination: 'Báo cáo tiêm chủng',
-      emergency: 'Báo cáo sự cố y tế',
-      comprehensive: 'Báo cáo tổng hợp',
-    };
-    
-    Alert.alert(
-      'Tạo báo cáo',
-      `Đang tạo ${reportTypes[type]}...`,
-      [
-        { text: 'Hủy', style: 'cancel' },
-        { text: 'Tiếp tục', onPress: () => {
-          Alert.alert('Thành công', 'Báo cáo đã được tạo và lưu vào hệ thống');
-        }}
-      ]
-    );
   };
 
   const openReportDetail = (report: RecentReport) => {
@@ -225,385 +236,445 @@ export default function Report() {
 
   const getRoleBasedActions = () => {
     switch (userRole) {
-      case 'parent':
+      case "administrator":
         return [
           {
-            title: 'Báo cáo sức khỏe con em',
-            description: 'Xem chi tiết sức khỏe',
-            icon: MedicalIcons.family,
-            action: () => generateReport('health'),
+            title: "Tạo báo cáo mới",
+            icon: "📝",
+            action: () =>
+              Alert.alert("Tạo báo cáo", "Chức năng tạo báo cáo mới"),
+          },
+          {
+            title: "Xuất dữ liệu",
+            icon: "📤",
+            action: () =>
+              Alert.alert("Xuất dữ liệu", "Xuất báo cáo ra file Excel/PDF"),
+          },
+          {
+            title: "Cài đặt báo cáo",
+            icon: "⚙️",
+            action: () => Alert.alert("Cài đặt", "Cấu hình định dạng báo cáo"),
           },
         ];
-      case 'medical_staff':
+      case "medical_staff":
         return [
           {
-            title: 'Báo cáo sức khỏe',
-            description: 'Tạo báo cáo tổng quát',
-            icon: MedicalIcons.stethoscope,
-            action: () => generateReport('health'),
+            title: "Báo cáo nhanh",
+            icon: "⚡",
+            action: () =>
+              Alert.alert("Báo cáo nhanh", "Tạo báo cáo sự cố y tế"),
           },
           {
-            title: 'Báo cáo tiêm chủng',
-            description: 'Thống kê tiêm chủng',
-            icon: MedicalIcons.syringe,
-            action: () => generateReport('vaccination'),
-          },
-          {
-            title: 'Báo cáo sự cố',
-            description: 'Ghi nhận sự cố y tế',
-            icon: MedicalIcons.alert,
-            action: () => generateReport('emergency'),
-          },
-        ];
-      case 'administrator':
-        return [
-          {
-            title: 'Báo cáo tổng hợp',
-            description: 'Báo cáo đầy đủ toàn trường',
-            icon: MedicalIcons.report,
-            action: () => generateReport('comprehensive'),
-          },
-          {
-            title: 'Thống kê y tế',
-            description: 'Phân tích dữ liệu sức khỏe',
-            icon: '📊',
-            action: () => Alert.alert('Thống kê', 'Đang chuẩn bị báo cáo thống kê...'),
+            title: "Thống kê lớp",
+            icon: "📊",
+            action: () => Alert.alert("Thống kê lớp", "Xem thống kê theo lớp"),
           },
         ];
       default:
-        return [];
+        return [
+          {
+            title: "Xem báo cáo con",
+            icon: "👶",
+            action: () =>
+              Alert.alert("Báo cáo con", "Xem báo cáo sức khỏe của con"),
+          },
+        ];
     }
   };
 
-  const roleActions = getRoleBasedActions();
+  const TabButton = ({
+    title,
+    isActive,
+    onPress,
+  }: {
+    title: string;
+    isActive: boolean;
+    onPress: () => void;
+  }) => (
+    <TouchableOpacity
+      style={[styles.tabButton, isActive && styles.activeTabButton]}
+      onPress={onPress}
+    >
+      <Text
+        style={[styles.tabButtonText, isActive && styles.activeTabButtonText]}
+      >
+        {title}
+      </Text>
+    </TouchableOpacity>
+  );
 
   return (
-    <ScrollView 
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>
-            {MedicalIcons.report} Báo cáo Y tế
-          </Text>
-          <Text style={styles.headerSubtitle}>
-            Theo dõi và phân tích sức khỏe học sinh
-          </Text>
+    <>
+      <CustomHeader
+        title="Báo cáo & Thống kê"
+        subtitle="Hệ thống quản lý báo cáo y tế"
+        icon={<Text style={{ fontSize: 14 }}>{MedicalIcons.report}</Text>}
+      />
+      <View style={styles.container}>
+        {/* Tab Navigation */}
+        <View style={styles.tabContainer}>
+          <TabButton
+            title="Tổng quan"
+            isActive={activeTab === "overview"}
+            onPress={() => setActiveTab("overview")}
+          />
+          <TabButton
+            title="Thống kê"
+            isActive={activeTab === "statistics"}
+            onPress={() => setActiveTab("statistics")}
+          />
+          <TabButton
+            title="Báo cáo"
+            isActive={activeTab === "reports"}
+            onPress={() => setActiveTab("reports")}
+          />
         </View>
-      </View>
 
-      {/* Period Filter */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Thời gian báo cáo</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.periodFilter}>
-            {[
-              { key: 'this_week', label: 'Tuần này' },
-              { key: 'this_month', label: 'Tháng này' },
-              { key: 'this_quarter', label: 'Quý này' },
-              { key: 'this_year', label: 'Năm này' },
-            ].map((period) => (
-              <TouchableOpacity
-                key={period.key}
-                style={[
-                  styles.periodButton,
-                  selectedPeriod === period.key && styles.periodButtonActive
-                ]}
-                onPress={() => setSelectedPeriod(period.key)}
-              >
-                <Text style={[
-                  styles.periodButtonText,
-                  selectedPeriod === period.key && styles.periodButtonTextActive
-                ]}>
-                  {period.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
-      </View>
-
-      {/* Report Cards */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          📊 Tổng quan chỉ số
-        </Text>
-        <View style={styles.cardsGrid}>
-          {reportCards.map((card) => (
-            <View key={card.id} style={styles.reportCard}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardIcon}>{card.icon}</Text>
-                <Text style={styles.cardTrend}>
-                  {getTrendIcon(card.trend)}
-                </Text>
-              </View>
-              <Text style={[styles.cardValue, { color: card.color }]}>
-                {card.value}
-              </Text>
-              <Text style={styles.cardTitle}>{card.title}</Text>
-              <Text style={styles.cardDescription}>{card.description}</Text>
-              <Text style={styles.cardPeriod}>{card.period}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Health Statistics by Grade */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          📈 Thống kê theo khối lớp
-        </Text>
-        <View style={styles.statisticsContainer}>
-          {healthStatistics.map((stat) => (
-            <View key={stat.id} style={styles.statisticCard}>
-              <View style={styles.statisticHeader}>
-                <Text style={styles.statisticCategory}>{stat.category}</Text>
-                <Text style={[styles.statisticPercentage, 
-                  { color: stat.percentage >= 95 ? MedicalColors.success : 
-                           stat.percentage >= 90 ? MedicalColors.warning : MedicalColors.error }
-                ]}>
-                  {stat.percentage}%
-                </Text>
-              </View>
-              
-              <View style={styles.statisticDetails}>
-                <View style={styles.statisticItem}>
-                  <View style={[styles.statusDot, { backgroundColor: MedicalColors.success }]} />
-                  <Text style={styles.statusText}>Khỏe mạnh: {stat.healthy}</Text>
-                </View>
-                <View style={styles.statisticItem}>
-                  <View style={[styles.statusDot, { backgroundColor: MedicalColors.warning }]} />
-                  <Text style={styles.statusText}>Cần theo dõi: {stat.needsAttention}</Text>
-                </View>
-                <View style={styles.statisticItem}>
-                  <View style={[styles.statusDot, { backgroundColor: MedicalColors.error }]} />
-                  <Text style={styles.statusText}>Khẩn cấp: {stat.urgent}</Text>
+        <ScrollView
+          style={styles.content}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          showsVerticalScrollIndicator={false}
+        >
+          {activeTab === "overview" && (
+            <View style={styles.overviewContainer}>
+              {/* Report Cards */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>📊 Chỉ số tổng quan</Text>
+                <View style={styles.cardsContainer}>
+                  {reportCards.map((card) => (
+                    <View
+                      key={card.id}
+                      style={[styles.card, { borderLeftColor: card.color }]}
+                    >
+                      <View style={styles.cardHeader}>
+                        <Text style={styles.cardIcon}>{card.icon}</Text>
+                        <Text style={styles.cardTrend}>
+                          {getTrendIcon(card.trend)}
+                        </Text>
+                      </View>
+                      <Text style={styles.cardValue}>{card.value}</Text>
+                      <Text style={styles.cardTitle}>{card.title}</Text>
+                      <Text style={styles.cardDescription}>
+                        {card.description}
+                      </Text>
+                      <Text style={styles.cardPeriod}>{card.period}</Text>
+                    </View>
+                  ))}
                 </View>
               </View>
-              
-              <View style={styles.progressBar}>
-                <View 
-                  style={[
-                    styles.progressFill, 
-                    { 
-                      width: `${stat.percentage}%`,
-                      backgroundColor: stat.percentage >= 95 ? MedicalColors.success : 
-                                     stat.percentage >= 90 ? MedicalColors.warning : MedicalColors.error
-                    }
-                  ]} 
-                />
+
+              {/* Quick Actions */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>⚡ Thao tác nhanh</Text>
+                <View style={styles.actionsContainer}>
+                  {getRoleBasedActions().map((action, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      style={styles.actionButton}
+                      onPress={action.action}
+                    >
+                      <Text style={styles.actionIcon}>{action.icon}</Text>
+                      <Text style={styles.actionTitle}>{action.title}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
             </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Quick Report Generation */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          ⚡ Tạo báo cáo nhanh
-        </Text>
-        <View style={styles.actionsGrid}>
-          {roleActions.map((action, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.actionCard}
-              onPress={action.action}
-            >
-              <Text style={styles.actionIcon}>{action.icon}</Text>
-              <View style={styles.actionContent}>
-                <Text style={styles.actionTitle}>{action.title}</Text>
-                <Text style={styles.actionDescription}>{action.description}</Text>
-              </View>
-              <Text style={styles.actionArrow}>→</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* Recent Reports */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          📋 Báo cáo gần đây
-        </Text>
-        <View style={styles.reportsContainer}>
-          {recentReports.map((report) => (
-            <TouchableOpacity
-              key={report.id}
-              style={styles.reportItem}
-              onPress={() => openReportDetail(report)}
-            >
-              <View style={styles.reportIconContainer}>
-                <Text style={styles.reportTypeIcon}>{getTypeIcon(report.type)}</Text>
-              </View>
-              <View style={styles.reportContent}>
-                <Text style={styles.reportTitle}>{report.title}</Text>
-                <Text style={styles.reportAuthor}>Tác giả: {report.author}</Text>
-                <Text style={styles.reportDate}>{report.date}</Text>
-              </View>
-              <View style={styles.reportStatus}>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(report.status) }]}>
-                  <Text style={styles.statusBadgeText}>{getStatusText(report.status)}</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* Report Detail Modal */}
-      <Modal
-        visible={showDetailModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowDetailModal(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Chi tiết báo cáo</Text>
-            <TouchableOpacity 
-              style={styles.modalCloseButton}
-              onPress={() => setShowDetailModal(false)}
-            >
-              <Text style={styles.modalCloseText}>✕</Text>
-            </TouchableOpacity>
-          </View>
-          
-          {selectedReport && (
-            <ScrollView style={styles.modalContent}>
-              <View style={styles.modalSection}>
-                <Text style={styles.modalLabel}>Tiêu đề:</Text>
-                <Text style={styles.modalValue}>{selectedReport.title}</Text>
-              </View>
-              
-              <View style={styles.modalSection}>
-                <Text style={styles.modalLabel}>Ngày tạo:</Text>
-                <Text style={styles.modalValue}>{selectedReport.date}</Text>
-              </View>
-              
-              <View style={styles.modalSection}>
-                <Text style={styles.modalLabel}>Tác giả:</Text>
-                <Text style={styles.modalValue}>{selectedReport.author}</Text>
-              </View>
-              
-              <View style={styles.modalSection}>
-                <Text style={styles.modalLabel}>Trạng thái:</Text>
-                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(selectedReport.status) }]}>
-                  <Text style={styles.statusBadgeText}>{getStatusText(selectedReport.status)}</Text>
-                </View>
-              </View>
-              
-              <View style={styles.modalActions}>
-                <TouchableOpacity style={styles.modalActionButton}>
-                  <Text style={styles.modalActionText}>📄 Xem chi tiết</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.modalActionButton}>
-                  <Text style={styles.modalActionText}>📤 Xuất file</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.modalActionButton}>
-                  <Text style={styles.modalActionText}>📧 Chia sẻ</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
           )}
-        </View>
-      </Modal>
 
-      <View style={styles.bottomPadding} />
-    </ScrollView>
+          {activeTab === "statistics" && (
+            <View style={styles.statisticsContainer}>
+              <Text style={styles.sectionTitle}>📈 Thống kê chi tiết</Text>
+              {healthStatistics.map((stat) => (
+                <View key={stat.id} style={styles.statCard}>
+                  <View style={styles.statHeader}>
+                    <Text style={styles.statCategory}>{stat.category}</Text>
+                    <Text style={styles.statPercentage}>
+                      {stat.percentage}%
+                    </Text>
+                  </View>
+                  <View style={styles.statDetails}>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statLabel}>Tổng số:</Text>
+                      <Text style={styles.statValue}>{stat.total}</Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text
+                        style={[
+                          styles.statLabel,
+                          { color: MedicalColors.success },
+                        ]}
+                      >
+                        Khỏe mạnh:
+                      </Text>
+                      <Text
+                        style={[
+                          styles.statValue,
+                          { color: MedicalColors.success },
+                        ]}
+                      >
+                        {stat.healthy}
+                      </Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text
+                        style={[
+                          styles.statLabel,
+                          { color: MedicalColors.warning },
+                        ]}
+                      >
+                        Cần theo dõi:
+                      </Text>
+                      <Text
+                        style={[
+                          styles.statValue,
+                          { color: MedicalColors.warning },
+                        ]}
+                      >
+                        {stat.needsAttention}
+                      </Text>
+                    </View>
+                    <View style={styles.statItem}>
+                      <Text
+                        style={[
+                          styles.statLabel,
+                          { color: MedicalColors.error },
+                        ]}
+                      >
+                        Khẩn cấp:
+                      </Text>
+                      <Text
+                        style={[
+                          styles.statValue,
+                          { color: MedicalColors.error },
+                        ]}
+                      >
+                        {stat.urgent}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.progressBar}>
+                    <View
+                      style={[
+                        styles.progressFill,
+                        { width: `${stat.percentage}%` },
+                      ]}
+                    />
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {activeTab === "reports" && (
+            <View style={styles.reportsContainer}>
+              <Text style={styles.sectionTitle}>📋 Báo cáo gần đây</Text>
+              {recentReports.map((report) => (
+                <TouchableOpacity
+                  key={report.id}
+                  style={styles.reportCard}
+                  onPress={() => openReportDetail(report)}
+                >
+                  <View style={styles.reportHeader}>
+                    <Text style={styles.reportIcon}>
+                      {getTypeIcon(report.type)}
+                    </Text>
+                    <View style={styles.reportInfo}>
+                      <Text style={styles.reportTitle}>{report.title}</Text>
+                      <Text style={styles.reportAuthor}>
+                        Tác giả: {report.author}
+                      </Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        {
+                          backgroundColor: getStatusColor(report.status) + "20",
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.statusText,
+                          { color: getStatusColor(report.status) },
+                        ]}
+                      >
+                        {getStatusText(report.status)}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.reportDate}>Ngày: {report.date}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </ScrollView>
+
+        {/* Report Detail Modal */}
+        <Modal
+          visible={showDetailModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowDetailModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Chi tiết báo cáo</Text>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setShowDetailModal(false)}
+                >
+                  <Text style={styles.closeButtonText}>×</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.modalBody}>
+                {selectedReport && (
+                  <>
+                    <Text style={styles.detailTitle}>
+                      {selectedReport.title}
+                    </Text>
+                    <Text style={styles.detailInfo}>
+                      Tác giả: {selectedReport.author}
+                    </Text>
+                    <Text style={styles.detailInfo}>
+                      Ngày tạo: {selectedReport.date}
+                    </Text>
+                    <Text style={styles.detailInfo}>
+                      Loại: {selectedReport.type}
+                    </Text>
+                    <Text style={styles.detailInfo}>
+                      Trạng thái: {getStatusText(selectedReport.status)}
+                    </Text>
+
+                    <View style={styles.detailContent}>
+                      <Text style={styles.detailSectionTitle}>
+                        Nội dung báo cáo:
+                      </Text>
+                      <Text style={styles.detailText}>
+                        Đây là nội dung chi tiết của báo cáo. Trong thực tế, nội
+                        dung này sẽ được lấy từ cơ sở dữ liệu.
+                      </Text>
+                    </View>
+                  </>
+                )}
+              </View>
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setShowDetailModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Đóng</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.confirmButton}
+                  onPress={() => {
+                    Alert.alert(
+                      "Xuất báo cáo",
+                      "Báo cáo đã được xuất thành công"
+                    );
+                    setShowDetailModal(false);
+                  }}
+                >
+                  <Text style={styles.confirmButtonText}>Xuất PDF</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: MedicalColors.backgroundSecondary,
+    backgroundColor: MedicalColors.background,
   },
   header: {
     backgroundColor: MedicalColors.primary,
     paddingTop: 60,
-    paddingBottom: 30,
+    paddingBottom: 20,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    alignItems: "center",
   },
-  headerContent: {
-    alignItems: 'center',
+  headerIcon: {
+    fontSize: 32,
+    marginBottom: 10,
   },
-  headerTitle: {
+  title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontWeight: "bold",
+    color: "white",
     marginBottom: 5,
   },
-  headerSubtitle: {
+  subtitle: {
     fontSize: 14,
-    color: '#FFFFFF',
-    opacity: 0.9,
+    color: "rgba(255,255,255,0.8)",
+  },
+  tabContainer: {
+    flexDirection: "row",
+    backgroundColor: "white",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: MedicalColors.border,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+    borderRadius: 8,
+    marginHorizontal: 5,
+  },
+  activeTabButton: {
+    backgroundColor: MedicalColors.primary + "20",
+  },
+  tabButtonText: {
+    fontSize: 14,
+    color: MedicalColors.textSecondary,
+    fontWeight: "500",
+  },
+  activeTabButtonText: {
+    color: MedicalColors.primary,
+    fontWeight: "bold",
+  },
+  content: {
+    flex: 1,
+  },
+  overviewContainer: {
+    padding: 20,
   },
   section: {
-    padding: 20,
+    marginBottom: 30,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: MedicalColors.textPrimary,
     marginBottom: 15,
   },
-  periodFilter: {
-    flexDirection: 'row',
-    gap: 10,
+  cardsContainer: {
+    gap: 15,
   },
-  periodButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: MedicalColors.backgroundCard,
-    borderWidth: 2,
-    borderColor: MedicalColors.border,
-  },
-  periodButtonActive: {
-    backgroundColor: MedicalColors.primary,
-    borderColor: MedicalColors.primary,
-  },
-  periodButtonText: {
-    fontSize: 14,
-    color: MedicalColors.textSecondary,
-    fontWeight: '500',
-  },
-  periodButtonTextActive: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  cardsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  reportCard: {
-    backgroundColor: MedicalColors.backgroundCard,
+  card: {
+    backgroundColor: "white",
     borderRadius: 12,
-    padding: 15,
-    width: (width - 60) / 2,
-    marginBottom: 15,
+    padding: 20,
+    borderLeftWidth: 4,
     shadowColor: MedicalColors.shadowLight,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
   cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 10,
   },
   cardIcon: {
@@ -613,246 +684,255 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   cardValue: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: "bold",
+    color: MedicalColors.textPrimary,
     marginBottom: 5,
   },
   cardTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: "600",
     color: MedicalColors.textPrimary,
-    marginBottom: 3,
+    marginBottom: 5,
   },
   cardDescription: {
-    fontSize: 12,
+    fontSize: 14,
     color: MedicalColors.textSecondary,
     marginBottom: 5,
   },
   cardPeriod: {
-    fontSize: 10,
+    fontSize: 12,
     color: MedicalColors.textMuted,
-    fontStyle: 'italic',
   },
-  statisticsContainer: {
+  actionsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 15,
   },
-  statisticCard: {
-    backgroundColor: MedicalColors.backgroundCard,
+  actionButton: {
+    backgroundColor: "white",
     borderRadius: 12,
-    padding: 16,
+    padding: 20,
+    alignItems: "center",
+    minWidth: 100,
     shadowColor: MedicalColors.shadowLight,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statisticHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  statisticCategory: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: MedicalColors.textPrimary,
-  },
-  statisticPercentage: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  statisticDetails: {
-    gap: 8,
-    marginBottom: 12,
-  },
-  statisticItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 8,
-  },
-  statusText: {
-    fontSize: 14,
-    color: MedicalColors.textSecondary,
-  },
-  progressBar: {
-    height: 6,
-    backgroundColor: MedicalColors.border,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  actionsGrid: {
-    gap: 12,
-  },
-  actionCard: {
-    backgroundColor: MedicalColors.backgroundCard,
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: MedicalColors.shadowLight,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
   actionIcon: {
-    fontSize: 28,
-    marginRight: 15,
-  },
-  actionContent: {
-    flex: 1,
+    fontSize: 24,
+    marginBottom: 8,
   },
   actionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: "500",
     color: MedicalColors.textPrimary,
-    marginBottom: 4,
+    textAlign: "center",
   },
-  actionDescription: {
-    fontSize: 14,
-    color: MedicalColors.textSecondary,
+  statisticsContainer: {
+    padding: 20,
   },
-  actionArrow: {
-    fontSize: 18,
-    color: MedicalColors.textMuted,
-  },
-  reportsContainer: {
-    gap: 12,
-  },
-  reportItem: {
-    backgroundColor: MedicalColors.backgroundCard,
+  statCard: {
+    backgroundColor: "white",
     borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
+    padding: 15,
+    marginBottom: 15,
     shadowColor: MedicalColors.shadowLight,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  reportIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: MedicalColors.backgroundSecondary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 15,
+  statHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
   },
-  reportTypeIcon: {
+  statCategory: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: MedicalColors.textPrimary,
+  },
+  statPercentage: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: MedicalColors.primary,
+  },
+  statDetails: {
+    marginBottom: 10,
+  },
+  statItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 5,
+  },
+  statLabel: {
+    fontSize: 14,
+    color: MedicalColors.textSecondary,
+  },
+  statValue: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: MedicalColors.textPrimary,
+  },
+  progressBar: {
+    height: 6,
+    backgroundColor: MedicalColors.border,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: MedicalColors.primary,
+    borderRadius: 3,
+  },
+  reportsContainer: {
+    padding: 20,
+  },
+  reportCard: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 15,
+    shadowColor: MedicalColors.shadowLight,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  reportHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  reportIcon: {
     fontSize: 20,
+    marginRight: 10,
   },
-  reportContent: {
+  reportInfo: {
     flex: 1,
   },
   reportTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: MedicalColors.textPrimary,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   reportAuthor: {
     fontSize: 12,
     color: MedicalColors.textSecondary,
-    marginBottom: 2,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: "500",
   },
   reportDate: {
     fontSize: 12,
     color: MedicalColors.textMuted,
   },
-  reportStatus: {
-    alignItems: 'flex-end',
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  modalContainer: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: MedicalColors.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: MedicalColors.primary,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  modalCloseButton: {
-    padding: 8,
-  },
-  modalCloseText: {
-    fontSize: 20,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalContent: {
-    flex: 1,
+    backgroundColor: "white",
+    borderRadius: 16,
+    width: width - 40,
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: MedicalColors.border,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: MedicalColors.textPrimary,
+  },
+  closeButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: MedicalColors.border,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeButtonText: {
+    fontSize: 20,
+    color: MedicalColors.textSecondary,
+  },
+  modalBody: {
     padding: 20,
   },
-  modalSection: {
-    marginBottom: 20,
+  detailTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: MedicalColors.textPrimary,
+    marginBottom: 15,
   },
-  modalLabel: {
+  detailInfo: {
     fontSize: 14,
-    fontWeight: '600',
     color: MedicalColors.textSecondary,
     marginBottom: 8,
   },
-  modalValue: {
-    fontSize: 16,
-    color: MedicalColors.textPrimary,
-  },
-  modalActions: {
-    gap: 12,
+  detailContent: {
     marginTop: 20,
   },
-  modalActionButton: {
-    backgroundColor: MedicalColors.backgroundCard,
+  detailSectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: MedicalColors.textPrimary,
+    marginBottom: 10,
+  },
+  detailText: {
+    fontSize: 14,
+    color: MedicalColors.textSecondary,
+    lineHeight: 20,
+  },
+  modalFooter: {
+    flexDirection: "row",
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: MedicalColors.border,
+    gap: 15,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 12,
     borderRadius: 8,
-    padding: 16,
-    alignItems: 'center',
     borderWidth: 1,
     borderColor: MedicalColors.border,
+    alignItems: "center",
   },
-  modalActionText: {
+  cancelButtonText: {
     fontSize: 16,
-    color: MedicalColors.textPrimary,
-    fontWeight: '600',
+    color: MedicalColors.textSecondary,
+    fontWeight: "500",
   },
-  bottomPadding: {
-    height: 100,
+  confirmButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: MedicalColors.primary,
+    alignItems: "center",
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    color: "white",
+    fontWeight: "bold",
   },
 });

@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { collection, getDocs } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import {
@@ -13,7 +14,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { MedicalColors } from "../../constants/Colors";
+import CustomHeader from "../../components/CustomHeader";
+import { MedicalColors, MedicalIcons } from "../../constants/Colors";
 import { useAuth } from "../../hooks/useAuth";
 import { db } from "../../lib/firebase";
 import {
@@ -44,6 +46,12 @@ export default function UserManagement() {
   const [rejectReason, setRejectReason] = useState("");
   const [suspendReason, setSuspendReason] = useState("");
   const { userProfile } = useAuth();
+
+  useEffect(() => {
+    if (userProfile && userProfile.role !== "administrator") {
+      router.replace("/Login");
+    }
+  }, [userProfile]);
 
   const loadUsers = async () => {
     try {
@@ -240,286 +248,291 @@ export default function UserManagement() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Quản lý Người dùng</Text>
-        <Text style={styles.headerSubtitle}>
-          Tổng cộng: {filteredUsers.length} người dùng
-        </Text>
-      </View>
-
-      {/* Search Bar */}
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Tìm kiếm theo tên, email, SĐT..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
+    <>
+      <View style={styles.container}>
+        {/* Header */}
+        <CustomHeader
+          title="Người dùng"
+          subtitle={`Tổng cộng: ${filteredUsers.length} người dùng`}
+          icon={<Text style={{ fontSize: 14 }}>{MedicalIcons.users}</Text>}
         />
-      </View>
 
-      {/* Filters */}
-      <View style={styles.filtersContainer}>
-        <Text style={styles.filtersTitle}>Lọc theo trạng thái:</Text>
-        <View style={styles.filtersRow}>
-          <FilterButton
-            title="Tất cả"
-            isActive={statusFilter === "all"}
-            onPress={() => setStatusFilter("all")}
-          />
-          <FilterButton
-            title="Chờ duyệt"
-            isActive={statusFilter === UserStatus.PENDING}
-            onPress={() => setStatusFilter(UserStatus.PENDING)}
-          />
-          <FilterButton
-            title="Hoạt động"
-            isActive={statusFilter === UserStatus.ACTIVE}
-            onPress={() => setStatusFilter(UserStatus.ACTIVE)}
-          />
-          <FilterButton
-            title="Từ chối"
-            isActive={statusFilter === UserStatus.REJECTED}
-            onPress={() => setStatusFilter(UserStatus.REJECTED)}
+        {/* Search Bar */}
+        <View style={[styles.searchContainerCustom, { marginTop: 8 }]}>
+          <TextInput
+            style={styles.searchInputCustom}
+            placeholder="Tìm kiếm theo tên, email, SĐT..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor={MedicalColors.textMuted}
           />
         </View>
 
-        <Text style={styles.filtersTitle}>Lọc theo vai trò:</Text>
-        <View style={styles.filtersRow}>
-          <FilterButton
-            title="Tất cả"
-            isActive={roleFilter === "all"}
-            onPress={() => setRoleFilter("all")}
-          />
-          <FilterButton
-            title="Phụ huynh"
-            isActive={roleFilter === UserRole.PARENT}
-            onPress={() => setRoleFilter(UserRole.PARENT)}
-          />
-          <FilterButton
-            title="Y tế"
-            isActive={roleFilter === UserRole.MEDICAL_STAFF}
-            onPress={() => setRoleFilter(UserRole.MEDICAL_STAFF)}
-          />
-          <FilterButton
-            title="Admin"
-            isActive={roleFilter === UserRole.ADMINISTRATOR}
-            onPress={() => setRoleFilter(UserRole.ADMINISTRATOR)}
-          />
-        </View>
-      </View>
-
-      {/* Users List */}
-      <FlatList
-        data={filteredUsers}
-        renderItem={renderUserItem}
-        keyExtractor={(item) => item.uid}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-        contentContainerStyle={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-      />
-
-      {/* User Detail Modal */}
-      <Modal
-        visible={showUserModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowUserModal(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Chi tiết người dùng</Text>
-            <TouchableOpacity
-              style={styles.modalCloseButton}
-              onPress={() => setShowUserModal(false)}
-            >
-              <Text style={styles.modalCloseText}>✕</Text>
-            </TouchableOpacity>
+        {/* Filters */}
+        <View style={styles.filtersContainerCustom}>
+          <Text style={styles.filtersTitleCustom}>Lọc theo trạng thái:</Text>
+          <View style={styles.filtersRowCustom}>
+            <FilterButton
+              title="Tất cả"
+              isActive={statusFilter === "all"}
+              onPress={() => setStatusFilter("all")}
+            />
+            <FilterButton
+              title="Chờ duyệt"
+              isActive={statusFilter === UserStatus.PENDING}
+              onPress={() => setStatusFilter(UserStatus.PENDING)}
+            />
+            <FilterButton
+              title="Hoạt động"
+              isActive={statusFilter === UserStatus.ACTIVE}
+              onPress={() => setStatusFilter(UserStatus.ACTIVE)}
+            />
+            <FilterButton
+              title="Từ chối"
+              isActive={statusFilter === UserStatus.REJECTED}
+              onPress={() => setStatusFilter(UserStatus.REJECTED)}
+            />
           </View>
 
-          {selectedUser && (
-            <View style={styles.modalContent}>
-              <View style={styles.userDetailSection}>
-                <Text style={styles.sectionTitle}>Thông tin cơ bản</Text>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Họ tên:</Text>
-                  <Text style={styles.detailValue}>
-                    {selectedUser.fullName}
-                  </Text>
+          <Text style={styles.filtersTitleCustom}>Lọc theo vai trò:</Text>
+          <View style={styles.filtersRowCustom}>
+            <FilterButton
+              title="Tất cả"
+              isActive={roleFilter === "all"}
+              onPress={() => setRoleFilter("all")}
+            />
+            <FilterButton
+              title="Phụ huynh"
+              isActive={roleFilter === UserRole.PARENT}
+              onPress={() => setRoleFilter(UserRole.PARENT)}
+            />
+            <FilterButton
+              title="Y tế"
+              isActive={roleFilter === UserRole.MEDICAL_STAFF}
+              onPress={() => setRoleFilter(UserRole.MEDICAL_STAFF)}
+            />
+            <FilterButton
+              title="Admin"
+              isActive={roleFilter === UserRole.ADMINISTRATOR}
+              onPress={() => setRoleFilter(UserRole.ADMINISTRATOR)}
+            />
+          </View>
+        </View>
+
+        {/* Users List */}
+        <FlatList
+          data={filteredUsers}
+          renderItem={renderUserItem}
+          keyExtractor={(item) => item.uid}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+          contentContainerStyle={styles.listContainerCustom}
+          showsVerticalScrollIndicator={false}
+        />
+
+        {/* User Detail Modal */}
+        <Modal
+          visible={showUserModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowUserModal(false)}
+        >
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Chi tiết người dùng</Text>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setShowUserModal(false)}
+              >
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {selectedUser && (
+              <View style={styles.modalContent}>
+                <View style={styles.userDetailSection}>
+                  <Text style={styles.sectionTitle}>Thông tin cơ bản</Text>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Họ tên:</Text>
+                    <Text style={styles.detailValue}>
+                      {selectedUser.fullName}
+                    </Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Email:</Text>
+                    <Text style={styles.detailValue}>{selectedUser.email}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>SĐT:</Text>
+                    <Text style={styles.detailValue}>
+                      {selectedUser.phoneNumber || "N/A"}
+                    </Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Vai trò:</Text>
+                    <Text style={styles.detailValue}>
+                      {getRoleDisplayName(selectedUser.role)}
+                    </Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Trạng thái:</Text>
+                    <Text
+                      style={[
+                        styles.detailValue,
+                        {
+                          color: getStatusDisplayInfo(selectedUser.status)
+                            .color,
+                        },
+                      ]}
+                    >
+                      {getStatusDisplayInfo(selectedUser.status).icon}{" "}
+                      {getStatusDisplayInfo(selectedUser.status).name}
+                    </Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Ngày tạo:</Text>
+                    <Text style={styles.detailValue}>
+                      {formatDate(selectedUser.createdAt)}
+                    </Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Cập nhật lần cuối:</Text>
+                    <Text style={styles.detailValue}>
+                      {formatDate(selectedUser.updatedAt)}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Email:</Text>
-                  <Text style={styles.detailValue}>{selectedUser.email}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>SĐT:</Text>
-                  <Text style={styles.detailValue}>
-                    {selectedUser.phoneNumber || "N/A"}
-                  </Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Vai trò:</Text>
-                  <Text style={styles.detailValue}>
-                    {getRoleDisplayName(selectedUser.role)}
-                  </Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Trạng thái:</Text>
-                  <Text
-                    style={[
-                      styles.detailValue,
-                      {
-                        color: getStatusDisplayInfo(selectedUser.status).color,
-                      },
-                    ]}
-                  >
-                    {getStatusDisplayInfo(selectedUser.status).icon}{" "}
-                    {getStatusDisplayInfo(selectedUser.status).name}
-                  </Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Ngày tạo:</Text>
-                  <Text style={styles.detailValue}>
-                    {formatDate(selectedUser.createdAt)}
-                  </Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Cập nhật lần cuối:</Text>
-                  <Text style={styles.detailValue}>
-                    {formatDate(selectedUser.updatedAt)}
-                  </Text>
+
+                {/* Action Buttons */}
+                <View style={styles.actionButtons}>
+                  {selectedUser.status === UserStatus.PENDING && (
+                    <>
+                      <TouchableOpacity
+                        style={[styles.actionButton, styles.approveButton]}
+                        onPress={() => {
+                          setShowUserModal(false);
+                          setShowActionModal(true);
+                        }}
+                      >
+                        <Text style={styles.actionButtonText}>
+                          ✅ Phê duyệt
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.actionButton, styles.rejectButton]}
+                        onPress={() => {
+                          setShowUserModal(false);
+                          setShowActionModal(true);
+                        }}
+                      >
+                        <Text style={styles.actionButtonText}>❌ Từ chối</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+
+                  {selectedUser.status === UserStatus.ACTIVE && (
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.suspendButton]}
+                      onPress={() => {
+                        setShowUserModal(false);
+                        setShowActionModal(true);
+                      }}
+                    >
+                      <Text style={styles.actionButtonText}>⛔ Tạm dừng</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {(selectedUser.status === UserStatus.SUSPENDED ||
+                    selectedUser.status === UserStatus.INACTIVE) && (
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.activateButton]}
+                      onPress={() => handleUserAction("activate")}
+                    >
+                      <Text style={styles.actionButtonText}>🟢 Kích hoạt</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </View>
+            )}
+          </View>
+        </Modal>
 
-              {/* Action Buttons */}
-              <View style={styles.actionButtons}>
-                {selectedUser.status === UserStatus.PENDING && (
-                  <>
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.approveButton]}
-                      onPress={() => {
-                        setShowUserModal(false);
-                        setShowActionModal(true);
-                      }}
-                    >
-                      <Text style={styles.actionButtonText}>✅ Phê duyệt</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.actionButton, styles.rejectButton]}
-                      onPress={() => {
-                        setShowUserModal(false);
-                        setShowActionModal(true);
-                      }}
-                    >
-                      <Text style={styles.actionButtonText}>❌ Từ chối</Text>
-                    </TouchableOpacity>
-                  </>
-                )}
+        {/* Action Modal */}
+        <Modal
+          visible={showActionModal}
+          animationType="fade"
+          transparent={true}
+          onRequestClose={() => setShowActionModal(false)}
+        >
+          <View style={styles.actionModalOverlay}>
+            <View style={styles.actionModalContent}>
+              <Text style={styles.actionModalTitle}>
+                {selectedUser?.status === UserStatus.PENDING
+                  ? "Xác nhận thao tác"
+                  : "Nhập lý do"}
+              </Text>
 
-                {selectedUser.status === UserStatus.ACTIVE && (
+              {selectedUser?.status === UserStatus.PENDING && (
+                <View style={styles.actionModalButtons}>
                   <TouchableOpacity
-                    style={[styles.actionButton, styles.suspendButton]}
+                    style={[styles.actionModalButton, styles.approveButton]}
+                    onPress={() => handleUserAction("approve")}
+                  >
+                    <Text style={styles.actionButtonText}>✅ Phê duyệt</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionModalButton, styles.rejectButton]}
                     onPress={() => {
-                      setShowUserModal(false);
-                      setShowActionModal(true);
+                      // Show reject reason input
+                      setShowActionModal(false);
+                      Alert.prompt(
+                        "Lý do từ chối",
+                        "Vui lòng nhập lý do từ chối tài khoản:",
+                        (text) => {
+                          setRejectReason(text || "");
+                          handleUserAction("reject");
+                        }
+                      );
+                    }}
+                  >
+                    <Text style={styles.actionButtonText}>❌ Từ chối</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {selectedUser?.status === UserStatus.ACTIVE && (
+                <View style={styles.actionModalButtons}>
+                  <TouchableOpacity
+                    style={[styles.actionModalButton, styles.suspendButton]}
+                    onPress={() => {
+                      setShowActionModal(false);
+                      Alert.prompt(
+                        "Lý do tạm dừng",
+                        "Vui lòng nhập lý do tạm dừng tài khoản:",
+                        (text) => {
+                          setSuspendReason(text || "");
+                          handleUserAction("suspend");
+                        }
+                      );
                     }}
                   >
                     <Text style={styles.actionButtonText}>⛔ Tạm dừng</Text>
                   </TouchableOpacity>
-                )}
+                </View>
+              )}
 
-                {(selectedUser.status === UserStatus.SUSPENDED ||
-                  selectedUser.status === UserStatus.INACTIVE) && (
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.activateButton]}
-                    onPress={() => handleUserAction("activate")}
-                  >
-                    <Text style={styles.actionButtonText}>🟢 Kích hoạt</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+              <TouchableOpacity
+                style={[styles.actionModalButton, styles.cancelButton]}
+                onPress={() => setShowActionModal(false)}
+              >
+                <Text style={styles.actionButtonText}>Hủy</Text>
+              </TouchableOpacity>
             </View>
-          )}
-        </View>
-      </Modal>
-
-      {/* Action Modal */}
-      <Modal
-        visible={showActionModal}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setShowActionModal(false)}
-      >
-        <View style={styles.actionModalOverlay}>
-          <View style={styles.actionModalContent}>
-            <Text style={styles.actionModalTitle}>
-              {selectedUser?.status === UserStatus.PENDING
-                ? "Xác nhận thao tác"
-                : "Nhập lý do"}
-            </Text>
-
-            {selectedUser?.status === UserStatus.PENDING && (
-              <View style={styles.actionModalButtons}>
-                <TouchableOpacity
-                  style={[styles.actionModalButton, styles.approveButton]}
-                  onPress={() => handleUserAction("approve")}
-                >
-                  <Text style={styles.actionButtonText}>✅ Phê duyệt</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionModalButton, styles.rejectButton]}
-                  onPress={() => {
-                    // Show reject reason input
-                    setShowActionModal(false);
-                    Alert.prompt(
-                      "Lý do từ chối",
-                      "Vui lòng nhập lý do từ chối tài khoản:",
-                      (text) => {
-                        setRejectReason(text || "");
-                        handleUserAction("reject");
-                      }
-                    );
-                  }}
-                >
-                  <Text style={styles.actionButtonText}>❌ Từ chối</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {selectedUser?.status === UserStatus.ACTIVE && (
-              <View style={styles.actionModalButtons}>
-                <TouchableOpacity
-                  style={[styles.actionModalButton, styles.suspendButton]}
-                  onPress={() => {
-                    setShowActionModal(false);
-                    Alert.prompt(
-                      "Lý do tạm dừng",
-                      "Vui lòng nhập lý do tạm dừng tài khoản:",
-                      (text) => {
-                        setSuspendReason(text || "");
-                        handleUserAction("suspend");
-                      }
-                    );
-                  }}
-                >
-                  <Text style={styles.actionButtonText}>⛔ Tạm dừng</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            <TouchableOpacity
-              style={[styles.actionModalButton, styles.cancelButton]}
-              onPress={() => setShowActionModal(false)}
-            >
-              <Text style={styles.actionButtonText}>Hủy</Text>
-            </TouchableOpacity>
           </View>
-        </View>
-      </Modal>
-    </View>
+        </Modal>
+      </View>
+    </>
   );
 }
 
@@ -611,7 +624,7 @@ const styles = StyleSheet.create({
   },
   userCard: {
     backgroundColor: MedicalColors.backgroundCard,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     shadowColor: MedicalColors.shadowLight,
@@ -624,18 +637,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    marginBottom: 12,
+    marginBottom: 10,
   },
   userInfo: {
     flex: 1,
   },
   userName: {
     fontSize: 16,
-    fontWeight: "bold",
+    fontWeight: "600",
     color: MedicalColors.textPrimary,
   },
   userEmail: {
-    fontSize: 14,
+    fontSize: 13,
     color: MedicalColors.textSecondary,
     marginTop: 2,
   },
@@ -649,12 +662,12 @@ const styles = StyleSheet.create({
   userCardBody: {
     borderTopWidth: 1,
     borderTopColor: MedicalColors.border,
-    paddingTop: 12,
+    paddingTop: 8,
   },
   userDetail: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 4,
+    marginBottom: 3,
   },
   userDetailLabel: {
     fontSize: 12,
@@ -787,5 +800,79 @@ const styles = StyleSheet.create({
   cancelButton: {
     backgroundColor: "#95A5A6",
     marginTop: 12,
+  },
+  headerCustom: {
+    backgroundColor: MedicalColors.primary,
+    paddingTop: 60,
+    paddingBottom: 28,
+    paddingHorizontal: 24,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    alignItems: "center",
+    marginBottom: 12,
+    shadowColor: MedicalColors.shadowLight,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  headerTitleCustom: {
+    fontSize: 26,
+    fontWeight: "bold",
+    color: "white",
+    marginBottom: 4,
+  },
+  headerSubtitleCustom: {
+    fontSize: 15,
+    color: "rgba(255,255,255,0.85)",
+  },
+  searchContainerCustom: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    marginHorizontal: 20,
+    marginTop: -28,
+    marginBottom: 16,
+    padding: 8,
+    shadowColor: MedicalColors.shadowLight,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  searchInputCustom: {
+    fontSize: 16,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: MedicalColors.inputBackground,
+    color: MedicalColors.textPrimary,
+  },
+  filtersContainerCustom: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+    backgroundColor: "white",
+    borderRadius: 16,
+    padding: 12,
+    shadowColor: MedicalColors.shadowLight,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  filtersTitleCustom: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: MedicalColors.textPrimary,
+    marginBottom: 4,
+    marginTop: 8,
+  },
+  filtersRowCustom: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 4,
+    flexWrap: "wrap",
+  },
+  listContainerCustom: {
+    padding: 16,
+    paddingBottom: 120, // Để tránh bị che bởi bottom tab
   },
 });

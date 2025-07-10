@@ -1,666 +1,811 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import { signOut } from "firebase/auth";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Dimensions,
+  LayoutAnimation,
   Modal,
+  Platform,
   ScrollView,
+  SectionList,
   StyleSheet,
-  Switch,
   Text,
+  TextInput,
   TouchableOpacity,
+  UIManager,
   View,
 } from "react-native";
-import {
-  MedicalColors,
-  MedicalIcons,
-  RoleColors,
-} from "../../constants/Colors";
+import CustomHeader from "../../components/CustomHeader";
+import { MedicalColors, MedicalIcons } from "../../constants/Colors";
 import { useAuth } from "../../hooks/useAuth";
-import { auth } from "../../lib/firebase";
 
 const { width } = Dimensions.get("window");
 
-interface SettingOption {
+interface SettingItem {
   id: string;
   title: string;
   description: string;
   icon: string;
-  type: "toggle" | "navigation" | "action";
-  value?: boolean;
-  onPress?: () => void;
-  onToggle?: (value: boolean) => void;
-  color?: string;
-  danger?: boolean;
+  color: string;
+  action: () => void;
+  requiresAdmin?: boolean;
 }
 
-const Setting = () => {
-  const { user } = useAuth();
+interface ProfileForm {
+  fullName: string;
+  email: string;
+  phone: string;
+}
+
+interface PasswordForm {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}
+
+if (
+  Platform.OS === "android" &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+export default function Setting() {
+  const { user, userProfile, signOut } = useAuth();
   const router = useRouter();
-  const [notifications, setNotifications] = useState({
-    healthReminders: true,
-    emergencyAlerts: true,
-    vaccinationNotices: true,
-    reportUpdates: false,
-    systemUpdates: true,
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showSystemLogModal, setShowSystemLogModal] = useState(false);
+  const [profileForm, setProfileForm] = useState<ProfileForm>({
+    fullName: userProfile?.fullName || "",
+    email: userProfile?.email || "",
+    phone: userProfile?.phoneNumber || "",
   });
-  const [showAboutModal, setShowAboutModal] = useState(false);
-  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [passwordForm, setPasswordForm] = useState<PasswordForm>({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  // Mock user role - in real app this would come from user data
-  const [userRole] = useState<"parent" | "medical_staff" | "administrator">(
-    "parent"
-  );
+  const userRole = userProfile?.role || "parent";
 
-  const handleLogout = async () => {
-    Alert.alert(
-      "Xác nhận đăng xuất",
-      "Bạn có chắc chắn muốn đăng xuất khỏi hệ thống y tế trường học không?",
-      [
+  useEffect(() => {
+    if (userProfile && userProfile.role === "administrator") {
+      // router.replace("/(admin)/Dashboard"); // This line is removed
+    }
+  }, [userProfile]); // Removed router from dependency array
+
+  const getRoleBasedSettings = (): SettingItem[] => {
+    const commonSettings = [
+      {
+        id: "profile",
+        title: "Thông tin cá nhân",
+        description: "Cập nhật thông tin cá nhân",
+        icon: MedicalIcons.profile,
+        color: MedicalColors.primary,
+        action: () => setShowProfileModal(true),
+      },
+      {
+        id: "password",
+        title: "Đổi mật khẩu",
+        description: "Thay đổi mật khẩu đăng nhập",
+        icon: MedicalIcons.security,
+        color: MedicalColors.warning,
+        action: () => setShowPasswordModal(true),
+      },
+      {
+        id: "notifications",
+        title: "Thông báo",
+        description: "Cài đặt thông báo và cảnh báo",
+        icon: MedicalIcons.notification,
+        color: MedicalColors.accent,
+        action: () => Alert.alert("Thông báo", "Cài đặt thông báo đã được lưu"),
+      },
+      {
+        id: "language",
+        title: "Ngôn ngữ",
+        description: "Chọn ngôn ngữ hiển thị",
+        icon: MedicalIcons.language,
+        color: MedicalColors.secondary,
+        action: () => Alert.alert("Ngôn ngữ", "Đã chuyển sang tiếng Việt"),
+      },
+    ];
+
+    if (userRole === "administrator") {
+      return [
+        ...commonSettings,
         {
-          text: "Hủy",
-          style: "cancel",
+          id: "user-management",
+          title: "Quản lý người dùng",
+          description: "Quản lý tài khoản và phân quyền",
+          icon: MedicalIcons.users,
+          color: MedicalColors.primary,
+          action: () => router.push("/(admin)/UserManagement"),
+          requiresAdmin: true,
         },
         {
-          text: "Đăng xuất",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await signOut(auth);
-              await AsyncStorage.removeItem("loginTime");
-              router.replace("/Login");
-            } catch (error) {
-              Alert.alert("Lỗi", "Có lỗi khi đăng xuất!");
-              console.error(error);
-            }
+          id: "request-approval",
+          title: "Duyệt yêu cầu",
+          description: "Duyệt các yêu cầu đăng ký tài khoản",
+          icon: MedicalIcons.approval,
+          color: MedicalColors.warning,
+          action: () => router.push("/(admin)/RequestApproval"),
+          requiresAdmin: true,
+        },
+        {
+          id: "system-config",
+          title: "Cấu hình hệ thống",
+          description: "Cài đặt tham số hệ thống",
+          icon: MedicalIcons.settings,
+          color: MedicalColors.secondary,
+          action: () => router.push("/(admin)/SystemConfig"),
+          requiresAdmin: true,
+        },
+        {
+          id: "data-import",
+          title: "Nhập dữ liệu",
+          description: "Import dữ liệu từ file Excel/CSV",
+          icon: MedicalIcons.import,
+          color: MedicalColors.accent,
+          action: () => router.push("/(admin)/AdminImport"),
+          requiresAdmin: true,
+        },
+        {
+          id: "system-logs",
+          title: "Log hệ thống",
+          description: "Xem nhật ký hoạt động hệ thống",
+          icon: MedicalIcons.logs,
+          color: MedicalColors.textSecondary,
+          action: () => setShowSystemLogModal(true),
+          requiresAdmin: true,
+        },
+        {
+          id: "backup-restore",
+          title: "Sao lưu & Khôi phục",
+          description: "Quản lý dữ liệu hệ thống",
+          icon: MedicalIcons.backup,
+          color: MedicalColors.success,
+          action: () => Alert.alert("Sao lưu", "Đã tạo bản sao lưu thành công"),
+          requiresAdmin: true,
+        },
+      ];
+    }
+
+    if (userRole === "medical_staff") {
+      return [
+        ...commonSettings,
+        {
+          id: "medical-records",
+          title: "Hồ sơ y tế",
+          description: "Quản lý hồ sơ khám bệnh",
+          icon: MedicalIcons.records,
+          color: MedicalColors.primary,
+          action: () =>
+            Alert.alert("Hồ sơ y tế", "Chức năng quản lý hồ sơ y tế"),
+        },
+        {
+          id: "schedule",
+          title: "Lịch làm việc",
+          description: "Quản lý lịch khám và làm việc",
+          icon: MedicalIcons.calendar,
+          color: MedicalColors.accent,
+          action: () =>
+            Alert.alert("Lịch làm việc", "Chức năng quản lý lịch làm việc"),
+        },
+      ];
+    }
+
+    return [
+      ...commonSettings,
+      {
+        id: "child-info",
+        title: "Thông tin con",
+        description: "Xem và cập nhật thông tin con",
+        icon: MedicalIcons.child,
+        color: MedicalColors.primary,
+        action: () =>
+          Alert.alert("Thông tin con", "Chức năng quản lý thông tin con"),
+      },
+      {
+        id: "emergency-contacts",
+        title: "Liên hệ khẩn cấp",
+        description: "Quản lý danh bạ liên hệ khẩn cấp",
+        icon: MedicalIcons.emergency,
+        color: MedicalColors.error,
+        action: () =>
+          Alert.alert("Liên hệ khẩn cấp", "Chức năng quản lý liên hệ khẩn cấp"),
+      },
+    ];
+  };
+
+  const handleProfileUpdate = () => {
+    if (!profileForm.fullName.trim()) {
+      Alert.alert("Lỗi", "Vui lòng nhập họ tên");
+      return;
+    }
+
+    Alert.alert(
+      "Xác nhận",
+      "Bạn có chắc chắn muốn cập nhật thông tin cá nhân?",
+      [
+        { text: "Hủy", style: "cancel" },
+        {
+          text: "Cập nhật",
+          onPress: () => {
+            Alert.alert("Thành công", "Thông tin cá nhân đã được cập nhật");
+            setShowProfileModal(false);
           },
         },
       ]
     );
   };
 
-  const toggleNotification = (key: keyof typeof notifications) => {
-    setNotifications((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
-    // Here you would typically sync with backend
+  const handlePasswordChange = () => {
+    if (
+      !passwordForm.currentPassword ||
+      !passwordForm.newPassword ||
+      !passwordForm.confirmPassword
+    ) {
+      Alert.alert("Lỗi", "Vui lòng điền đầy đủ thông tin");
+      return;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      Alert.alert("Lỗi", "Mật khẩu mới không khớp");
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      Alert.alert("Lỗi", "Mật khẩu mới phải có ít nhất 6 ký tự");
+      return;
+    }
+
+    Alert.alert("Xác nhận", "Bạn có chắc chắn muốn đổi mật khẩu?", [
+      { text: "Hủy", style: "cancel" },
+      {
+        text: "Đổi mật khẩu",
+        onPress: () => {
+          Alert.alert("Thành công", "Mật khẩu đã được thay đổi");
+          setShowPasswordModal(false);
+          setPasswordForm({
+            currentPassword: "",
+            newPassword: "",
+            confirmPassword: "",
+          });
+        },
+      },
+    ]);
   };
 
-  const getRoleInfo = () => {
-    const roleInfo = {
-      parent: {
-        title: "Phụ huynh",
-        description: "Theo dõi sức khỏe con em",
-        icon: RoleColors.parent.icon,
-        color: RoleColors.parent.primary,
+  const handleSignOut = () => {
+    Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất?", [
+      { text: "Hủy", style: "cancel" },
+      {
+        text: "Đăng xuất",
+        style: "destructive",
+        onPress: () => {
+          signOut();
+          router.replace("/Login");
+        },
       },
-      medical_staff: {
-        title: "Cán bộ Y tế",
-        description: "Chăm sóc sức khỏe học sinh",
-        icon: RoleColors.medical_staff.icon,
-        color: RoleColors.medical_staff.primary,
-      },
-      administrator: {
-        title: "Quản lý",
-        description: "Điều hành hệ thống y tế",
-        icon: RoleColors.administrator.icon,
-        color: RoleColors.administrator.primary,
-      },
-    };
-    return roleInfo[userRole];
+    ]);
   };
 
-  const notificationSettings: SettingOption[] = [
-    {
-      id: "health-reminders",
-      title: "Nhắc nhở sức khỏe",
-      description: "Thông báo khám sức khỏe định kỳ",
-      icon: MedicalIcons.bell,
-      type: "toggle",
-      value: notifications.healthReminders,
-      onToggle: () => toggleNotification("healthReminders"),
-    },
-    {
-      id: "emergency-alerts",
-      title: "Cảnh báo khẩn cấp",
-      description: "Thông báo tình huống y tế khẩn cấp",
-      icon: MedicalIcons.alert,
-      type: "toggle",
-      value: notifications.emergencyAlerts,
-      onToggle: () => toggleNotification("emergencyAlerts"),
-      color: MedicalColors.error,
-    },
-    {
-      id: "vaccination-notices",
-      title: "Thông báo tiêm chủng",
-      description: "Lịch tiêm chủng và nhắc nhở",
-      icon: MedicalIcons.syringe,
-      type: "toggle",
-      value: notifications.vaccinationNotices,
-      onToggle: () => toggleNotification("vaccinationNotices"),
-    },
-    {
-      id: "report-updates",
-      title: "Cập nhật báo cáo",
-      description: "Thông báo báo cáo y tế mới",
-      icon: MedicalIcons.report,
-      type: "toggle",
-      value: notifications.reportUpdates,
-      onToggle: () => toggleNotification("reportUpdates"),
-    },
-    {
-      id: "system-updates",
-      title: "Cập nhật hệ thống",
-      description: "Thông báo phiên bản và bảo trì",
-      icon: "🔄",
-      type: "toggle",
-      value: notifications.systemUpdates,
-      onToggle: () => toggleNotification("systemUpdates"),
-    },
-  ];
+  const getRoleText = (role: string) => {
+    switch (role) {
+      case "administrator":
+        return "Quản trị viên";
+      case "medical_staff":
+        return "Cán bộ y tế";
+      case "parent":
+        return "Phụ huynh";
+      default:
+        return "Người dùng";
+    }
+  };
 
-  const accountSettings: SettingOption[] = [
+  // Group settings by section
+  const sections = [
     {
-      id: "profile",
-      title: "Thông tin cá nhân",
-      description: "Cập nhật thông tin tài khoản",
-      icon: MedicalIcons.family,
-      type: "navigation",
-      onPress: () =>
-        Alert.alert("Thông tin cá nhân", "Chức năng đang phát triển"),
+      title: "Tài khoản",
+      data: getRoleBasedSettings().filter((item) =>
+        ["profile", "password", "notifications", "language"].includes(item.id)
+      ),
+    },
+    userRole === "administrator" && {
+      title: "Quản trị hệ thống",
+      data: getRoleBasedSettings().filter((item) => item.requiresAdmin),
     },
     {
-      id: "security",
-      title: "Bảo mật",
-      description: "Mật khẩu và xác thực",
-      icon: "🔒",
-      type: "navigation",
-      onPress: () => Alert.alert("Bảo mật", "Chức năng đang phát triển"),
+      title: "Hệ thống",
+      data: [
+        {
+          id: "system-info",
+          title: "Thông tin hệ thống",
+          description:
+            "Phiên bản: 1.0.0\nCập nhật: 15/12/2024\nTrạng thái: Hoạt động bình thường",
+          icon: MedicalIcons.info,
+          color: MedicalColors.secondary,
+          action: () => {},
+        },
+      ],
     },
-    {
-      id: "data-sync",
-      title: "Đồng bộ dữ liệu",
-      description: "Sao lưu và khôi phục",
-      icon: "☁️",
-      type: "navigation",
-      onPress: () => Alert.alert("Đồng bộ", "Dữ liệu đã được đồng bộ"),
-    },
-  ];
+  ].filter(Boolean) as { title: string; data: SettingItem[] }[];
 
-  // Admin settings - only show for administrators
-  const adminSettings: SettingOption[] = [
-    {
-      id: "admin-dashboard",
-      title: "Khu vực Quản trị",
-      description: "Dashboard và quản lý hệ thống",
-      icon: "👨‍💼",
-      type: "navigation",
-      color: "#E67E22",
-      onPress: () => router.push("/(admin)/Dashboard" as any),
-    },
-    {
-      id: "admin-import",
-      title: "Import Users",
-      description: "Nhập danh sách người dùng hàng loạt",
-      icon: "📤",
-      type: "navigation",
-      color: "#2ECC71",
-      onPress: () => router.push("/AdminImport"),
-    },
-  ];
-
-  const supportSettings: SettingOption[] = [
-    {
-      id: "help",
-      title: "Trợ giúp",
-      description: "Hướng dẫn sử dụng ứng dụng",
-      icon: "❓",
-      type: "navigation",
-      onPress: () => Alert.alert("Trợ giúp", "Hotline hỗ trợ: 0123-456-789"),
-    },
-    {
-      id: "contact",
-      title: "Liên hệ y tế",
-      description: "Thông tin liên hệ phòng y tế",
-      icon: "📞",
-      type: "navigation",
-      onPress: () =>
-        Alert.alert(
-          "Liên hệ",
-          "Email: yteschool@edu.vn\nHotline: 0123-456-789"
-        ),
-    },
-    {
-      id: "about",
-      title: "Về ứng dụng",
-      description: "Thông tin phiên bản và đội phát triển",
-      icon: MedicalIcons.info,
-      type: "navigation",
-      onPress: () => setShowAboutModal(true),
-    },
-    {
-      id: "privacy",
-      title: "Chính sách bảo mật",
-      description: "Quy định bảo vệ thông tin cá nhân",
-      icon: "🛡️",
-      type: "navigation",
-      onPress: () => setShowPrivacyModal(true),
-    },
-  ];
-
-  const renderSettingItem = (setting: SettingOption) => (
-    <TouchableOpacity
-      key={setting.id}
-      style={[styles.settingItem, setting.danger && styles.dangerItem]}
-      onPress={setting.onPress}
-      disabled={setting.type === "toggle"}
-    >
-      <View style={styles.settingLeft}>
-        <View
-          style={[
-            styles.settingIcon,
-            setting.color && { backgroundColor: setting.color + "20" },
-          ]}
-        >
-          <Text
-            style={[
-              styles.settingIconText,
-              setting.color && { color: setting.color },
-            ]}
-          >
-            {setting.icon}
-          </Text>
-        </View>
-        <View style={styles.settingContent}>
-          <Text
-            style={[styles.settingTitle, setting.danger && styles.dangerText]}
-          >
-            {setting.title}
-          </Text>
-          <Text style={styles.settingDescription}>{setting.description}</Text>
-        </View>
-      </View>
-
-      {setting.type === "toggle" && setting.onToggle && (
-        <Switch
-          value={setting.value || false}
-          onValueChange={setting.onToggle}
-          trackColor={{
-            false: MedicalColors.borderMedium,
-            true: (setting.color || MedicalColors.primary) + "40",
-          }}
-          thumbColor={
-            setting.value ? setting.color || MedicalColors.primary : "#f4f3f4"
-          }
-        />
-      )}
-
-      {setting.type === "navigation" && (
-        <Text style={styles.navigationArrow}>→</Text>
-      )}
-    </TouchableOpacity>
-  );
-
-  const roleInfo = getRoleInfo();
+  // Accordion/collapse logic
+  const handleExpand = (id: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedId(expandedId === id ? null : id);
+  };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Text style={styles.headerIcon}>{MedicalIcons.health}</Text>
-          <Text style={styles.title}>Cài đặt</Text>
-          <Text style={styles.subtitle}>Hệ thống quản lý y tế trường học</Text>
-        </View>
-      </View>
-
-      {/* User Profile Card */}
-      {user && (
-        <View style={styles.userCard}>
-          <View style={styles.userHeader}>
-            <View
-              style={[
-                styles.avatarContainer,
-                { backgroundColor: roleInfo.color },
-              ]}
-            >
-              <Text style={styles.avatarIcon}>{roleInfo.icon}</Text>
-            </View>
-            <View style={styles.userInfo}>
-              <Text style={styles.userName}>{roleInfo.title}</Text>
-              <Text style={styles.userEmail}>{user.email}</Text>
-              <Text style={styles.userRole}>{roleInfo.description}</Text>
-            </View>
+    <>
+      <CustomHeader
+        title="Cài đặt"
+        icon={<Text style={{ fontSize: 14 }}>{MedicalIcons.settings}</Text>}
+        actions={
+          <TouchableOpacity onPress={handleSignOut}>
+            <Text style={{ color: "white", fontSize: 16, marginLeft: 8 }}>
+              🚪
+            </Text>
+          </TouchableOpacity>
+        }
+      />
+      <View style={styles.container}>
+        {/* User Info */}
+        <View style={styles.userInfo}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>
+              {userProfile?.fullName?.charAt(0) ||
+                user?.email?.charAt(0) ||
+                "U"}
+            </Text>
           </View>
+          <View style={styles.userDetails}>
+            <Text style={styles.userName}>
+              {userProfile?.fullName || "Người dùng"}
+            </Text>
+            <Text style={styles.userEmail}>{user?.email}</Text>
+            <Text style={styles.userRole}>{getRoleText(userRole)}</Text>
+          </View>
+        </View>
 
-          <View style={styles.infoSection}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Trạng thái email:</Text>
+        {/* Nút Đăng xuất nổi bật ở đầu */}
+        <View style={styles.signOutContainerTop}>
+          <TouchableOpacity
+            style={styles.signOutButtonTop}
+            onPress={handleSignOut}
+          >
+            <Text style={styles.signOutIconTop}>🚪</Text>
+            <Text style={styles.signOutTextTop}>Đăng xuất</Text>
+          </TouchableOpacity>
+        </View>
+        <SectionList
+          sections={sections}
+          keyExtractor={(item) => item.id}
+          renderSectionHeader={({ section: { title } }) => (
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "bold",
+                color: MedicalColors.textPrimary,
+                marginBottom: 15,
+              }}
+            >
+              {title}
+            </Text>
+          )}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={{
+                backgroundColor: "white",
+                flexDirection: "row",
+                alignItems: "center",
+                padding: 15,
+                borderRadius: 12,
+                marginBottom: 10,
+                shadowColor: MedicalColors.shadowLight,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 3,
+              }}
+              onPress={() => {
+                if (item.action) item.action();
+                handleExpand(item.id);
+              }}
+              activeOpacity={0.85}
+            >
               <View
-                style={[
-                  styles.statusBadge,
-                  user.emailVerified
-                    ? styles.verifiedBadge
-                    : styles.unverifiedBadge,
-                ]}
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 20,
+                  backgroundColor: MedicalColors.primary + "20",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  marginRight: 15,
+                }}
               >
+                <Text style={{ fontSize: 18 }}>{item.icon}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
                 <Text
-                  style={[
-                    styles.statusText,
-                    user.emailVerified
-                      ? styles.verifiedText
-                      : styles.unverifiedText,
-                  ]}
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "600",
+                    color: MedicalColors.textPrimary,
+                    marginBottom: 2,
+                  }}
                 >
-                  {user.emailVerified ? "✅ Đã xác minh" : "❌ Chưa xác minh"}
+                  {item.title}
                 </Text>
+                {expandedId === item.id && (
+                  <Text
+                    style={{ fontSize: 14, color: MedicalColors.textSecondary }}
+                  >
+                    {item.description}
+                  </Text>
+                )}
+              </View>
+              <Text
+                style={{ fontSize: 18, color: MedicalColors.textSecondary }}
+              >
+                {expandedId === item.id ? "▲" : "▼"}
+              </Text>
+            </TouchableOpacity>
+          )}
+          contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 16 }}
+          showsVerticalScrollIndicator={false}
+        />
+
+        {/* Profile Update Modal */}
+        <Modal
+          visible={showProfileModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowProfileModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  Cập nhật thông tin cá nhân
+                </Text>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setShowProfileModal(false)}
+                >
+                  <Text style={styles.closeButtonText}>×</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.modalBody}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Họ và tên *</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={profileForm.fullName}
+                    onChangeText={(text) =>
+                      setProfileForm({ ...profileForm, fullName: text })
+                    }
+                    placeholder="Nhập họ và tên"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Email</Text>
+                  <TextInput
+                    style={[styles.input, styles.disabledInput]}
+                    value={profileForm.email}
+                    editable={false}
+                    placeholder="Email (không thể thay đổi)"
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Số điện thoại</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={profileForm.phone}
+                    onChangeText={(text) =>
+                      setProfileForm({ ...profileForm, phone: text })
+                    }
+                    placeholder="Nhập số điện thoại"
+                    keyboardType="phone-pad"
+                  />
+                </View>
+              </ScrollView>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setShowProfileModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Hủy</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.confirmButton}
+                  onPress={handleProfileUpdate}
+                >
+                  <Text style={styles.confirmButtonText}>Cập nhật</Text>
+                </TouchableOpacity>
               </View>
             </View>
+          </View>
+        </Modal>
 
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Ngày tham gia:</Text>
-              <Text style={styles.infoValue}>
-                {user.metadata.creationTime
-                  ? new Date(user.metadata.creationTime).toLocaleDateString(
-                      "vi-VN"
-                    )
-                  : "Không rõ"}
-              </Text>
+        {/* Password Change Modal */}
+        <Modal
+          visible={showPasswordModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowPasswordModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Đổi mật khẩu</Text>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setShowPasswordModal(false)}
+                >
+                  <Text style={styles.closeButtonText}>×</Text>
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.modalBody}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Mật khẩu hiện tại *</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={passwordForm.currentPassword}
+                    onChangeText={(text) =>
+                      setPasswordForm({
+                        ...passwordForm,
+                        currentPassword: text,
+                      })
+                    }
+                    placeholder="Nhập mật khẩu hiện tại"
+                    secureTextEntry
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Mật khẩu mới *</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={passwordForm.newPassword}
+                    onChangeText={(text) =>
+                      setPasswordForm({ ...passwordForm, newPassword: text })
+                    }
+                    placeholder="Nhập mật khẩu mới"
+                    secureTextEntry
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Xác nhận mật khẩu mới *</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={passwordForm.confirmPassword}
+                    onChangeText={(text) =>
+                      setPasswordForm({
+                        ...passwordForm,
+                        confirmPassword: text,
+                      })
+                    }
+                    placeholder="Nhập lại mật khẩu mới"
+                    secureTextEntry
+                  />
+                </View>
+
+                <View style={styles.passwordRules}>
+                  <Text style={styles.passwordRulesTitle}>
+                    Yêu cầu mật khẩu:
+                  </Text>
+                  <Text style={styles.passwordRule}>• Ít nhất 6 ký tự</Text>
+                  <Text style={styles.passwordRule}>
+                    • Bao gồm chữ hoa và chữ thường
+                  </Text>
+                  <Text style={styles.passwordRule}>
+                    • Bao gồm số và ký tự đặc biệt
+                  </Text>
+                </View>
+              </ScrollView>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setShowPasswordModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Hủy</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.confirmButton}
+                  onPress={handlePasswordChange}
+                >
+                  <Text style={styles.confirmButtonText}>Đổi mật khẩu</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-        </View>
-      )}
+        </Modal>
 
-      {/* Notification Settings */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          {MedicalIcons.notification} Thông báo
-        </Text>
-        <View style={styles.settingsGroup}>
-          {notificationSettings.map(renderSettingItem)}
-        </View>
-      </View>
+        {/* System Logs Modal */}
+        <Modal
+          visible={showSystemLogModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowSystemLogModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Log hệ thống</Text>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setShowSystemLogModal(false)}
+                >
+                  <Text style={styles.closeButtonText}>×</Text>
+                </TouchableOpacity>
+              </View>
 
-      {/* Account Settings */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>👤 Tài khoản</Text>
-        <View style={styles.settingsGroup}>
-          {accountSettings.map(renderSettingItem)}
-        </View>
-      </View>
+              <ScrollView style={styles.modalBody}>
+                <Text style={styles.logTitle}>📋 Hoạt động gần đây:</Text>
+                <View style={styles.logContainer}>
+                  <Text style={styles.logEntry}>
+                    ✅ 2024-12-15 09:30 - User admin@school.edu.vn logged in
+                  </Text>
+                  <Text style={styles.logEntry}>
+                    ✅ 2024-12-15 09:25 - 5 new user registrations approved
+                  </Text>
+                  <Text style={styles.logEntry}>
+                    ✅ 2024-12-15 09:20 - System backup completed
+                  </Text>
+                  <Text style={styles.logEntry}>
+                    ✅ 2024-12-15 09:15 - Database maintenance finished
+                  </Text>
+                  <Text style={styles.logEntry}>
+                    ✅ 2024-12-15 09:10 - Email notifications sent (15 users)
+                  </Text>
+                  <Text style={styles.logEntry}>
+                    ✅ 2024-12-15 09:05 - Security scan completed
+                  </Text>
+                  <Text style={styles.logEntry}>
+                    ✅ 2024-12-15 09:00 - System startup completed
+                  </Text>
+                  <Text style={styles.logEntry}>
+                    ⚠️ 2024-12-15 08:55 - High memory usage detected
+                  </Text>
+                  <Text style={styles.logEntry}>
+                    ✅ 2024-12-15 08:50 - Backup verification successful
+                  </Text>
+                  <Text style={styles.logEntry}>
+                    ✅ 2024-12-15 08:45 - User session cleanup completed
+                  </Text>
+                </View>
 
-      {/* Admin Settings - Only show for administrators */}
-      {userRole === "administrator" && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>⚙️ Quản trị viên</Text>
-          <View style={styles.settingsGroup}>
-            {adminSettings.map(renderSettingItem)}
+                <View style={styles.systemStatus}>
+                  <Text style={styles.systemStatusTitle}>
+                    🟢 Trạng thái hệ thống:
+                  </Text>
+                  <Text style={styles.systemStatusText}>
+                    • Tất cả dịch vụ hoạt động bình thường
+                  </Text>
+                  <Text style={styles.systemStatusText}>• Bảo mật: Tốt</Text>
+                  <Text style={styles.systemStatusText}>• Hiệu suất: 95%</Text>
+                  <Text style={styles.systemStatusText}>
+                    • Băng thông: Ổn định
+                  </Text>
+                </View>
+              </ScrollView>
+
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setShowSystemLogModal(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Đóng</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.confirmButton}
+                  onPress={() => {
+                    Alert.alert(
+                      "Xuất log",
+                      "Log hệ thống đã được xuất thành công"
+                    );
+                    setShowSystemLogModal(false);
+                  }}
+                >
+                  <Text style={styles.confirmButtonText}>Xuất log</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
-        </View>
-      )}
-
-      {/* Support & Information */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🆘 Hỗ trợ & Thông tin</Text>
-        <View style={styles.settingsGroup}>
-          {supportSettings.map(renderSettingItem)}
-        </View>
+        </Modal>
       </View>
-
-      {/* Logout Section */}
-      <View style={styles.section}>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutIcon}>🚪</Text>
-          <Text style={styles.logoutButtonText}>Đăng xuất</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* About Modal */}
-      <Modal
-        visible={showAboutModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowAboutModal(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Về ứng dụng</Text>
-            <TouchableOpacity
-              style={styles.modalCloseButton}
-              onPress={() => setShowAboutModal(false)}
-            >
-              <Text style={styles.modalCloseText}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.modalContent}>
-            <View style={styles.aboutSection}>
-              <Text style={styles.aboutIcon}>{MedicalIcons.health}</Text>
-              <Text style={styles.aboutTitle}>School Medicine</Text>
-              <Text style={styles.aboutVersion}>Phiên bản 1.0.0</Text>
-            </View>
-
-            <View style={styles.aboutDescription}>
-              <Text style={styles.aboutText}>
-                Hệ thống quản lý y tế trường học toàn diện, giúp kết nối phụ
-                huynh, cán bộ y tế và ban quản lý trong việc chăm sóc sức khỏe
-                học sinh.
-              </Text>
-
-              <Text style={styles.featureTitle}>✨ Tính năng chính:</Text>
-              <Text style={styles.featureItem}>
-                • Theo dõi sức khỏe học sinh
-              </Text>
-              <Text style={styles.featureItem}>• Quản lý lịch tiêm chủng</Text>
-              <Text style={styles.featureItem}>• Báo cáo y tế chi tiết</Text>
-              <Text style={styles.featureItem}>• Thông báo khẩn cấp</Text>
-              <Text style={styles.featureItem}>• Kết nối đa vai trò</Text>
-            </View>
-
-            <View style={styles.aboutFooter}>
-              <Text style={styles.copyright}>© 2024 School Medicine MMA</Text>
-              <Text style={styles.developer}>Phát triển bởi đội ngũ MMA</Text>
-            </View>
-          </ScrollView>
-        </View>
-      </Modal>
-
-      {/* Privacy Modal */}
-      <Modal
-        visible={showPrivacyModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setShowPrivacyModal(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Chính sách bảo mật</Text>
-            <TouchableOpacity
-              style={styles.modalCloseButton}
-              onPress={() => setShowPrivacyModal(false)}
-            >
-              <Text style={styles.modalCloseText}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.modalContent}>
-            <View style={styles.privacySection}>
-              <Text style={styles.privacyTitle}>🛡️ Cam kết bảo mật</Text>
-              <Text style={styles.privacyText}>
-                Chúng tôi cam kết bảo vệ thông tin cá nhân và dữ liệu y tế của
-                bạn theo các tiêu chuẩn bảo mật cao nhất.
-              </Text>
-
-              <Text style={styles.privacySubtitle}>📋 Thu thập thông tin</Text>
-              <Text style={styles.privacyText}>
-                • Thông tin cá nhân cơ bản (họ tên, email, số điện thoại){"\n"}•
-                Dữ liệu sức khỏe của học sinh{"\n"}• Lịch sử khám bệnh và tiêm
-                chủng{"\n"}• Thông tin liên hệ khẩn cấp
-              </Text>
-
-              <Text style={styles.privacySubtitle}>🔒 Bảo mật dữ liệu</Text>
-              <Text style={styles.privacyText}>
-                • Mã hóa dữ liệu end-to-end{"\n"}• Xác thực đa yếu tố{"\n"}• Sao
-                lưu định kỳ và an toàn{"\n"}• Tuân thủ quy định về bảo vệ dữ
-                liệu
-              </Text>
-
-              <Text style={styles.privacySubtitle}>👥 Chia sẻ thông tin</Text>
-              <Text style={styles.privacyText}>
-                Thông tin của bạn chỉ được chia sẻ với:{"\n"}• Cán bộ y tế
-                trường học{"\n"}• Ban quản lý có thẩm quyền{"\n"}• Cơ quan y tế
-                khi có yêu cầu hợp pháp{"\n"}• Không bán hoặc cho thuê thông tin
-                của bạn
-              </Text>
-            </View>
-          </ScrollView>
-        </View>
-      </Modal>
-
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          {MedicalIcons.school} School Medicine v1.0.0
-        </Text>
-        <Text style={styles.footerText}>© 2024 - Bảo vệ sức khỏe học sinh</Text>
-      </View>
-    </ScrollView>
+    </>
   );
-};
-
-export default Setting;
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: MedicalColors.backgroundSecondary,
+    backgroundColor: MedicalColors.background,
   },
   header: {
     backgroundColor: MedicalColors.primary,
     paddingTop: 60,
-    paddingBottom: 30,
+    paddingBottom: 20,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  headerContent: {
     alignItems: "center",
   },
   headerIcon: {
-    fontSize: 40,
+    fontSize: 32,
     marginBottom: 10,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "bold",
-    color: "#FFFFFF",
+    color: "white",
     marginBottom: 5,
   },
   subtitle: {
     fontSize: 14,
-    color: "#FFFFFF",
-    opacity: 0.9,
+    color: "rgba(255,255,255,0.8)",
   },
-  userCard: {
-    backgroundColor: MedicalColors.backgroundCard,
-    marginHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 10,
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: MedicalColors.shadowMedium,
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  userHeader: {
+  userInfo: {
+    backgroundColor: "white",
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 20,
+    padding: 20,
+    margin: 20,
+    borderRadius: 12,
+    shadowColor: MedicalColors.shadowLight,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  avatarContainer: {
+  avatar: {
     width: 60,
     height: 60,
     borderRadius: 30,
+    backgroundColor: MedicalColors.primary,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 15,
   },
-  avatarIcon: {
-    fontSize: 28,
+  avatarText: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "white",
   },
-  userInfo: {
+  userDetails: {
     flex: 1,
   },
   userName: {
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: "bold",
     color: MedicalColors.textPrimary,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   userEmail: {
     fontSize: 14,
     color: MedicalColors.textSecondary,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   userRole: {
     fontSize: 12,
-    color: MedicalColors.textMuted,
-    fontStyle: "italic",
+    color: MedicalColors.primary,
+    fontWeight: "500",
   },
-  infoSection: {
-    borderTopWidth: 1,
-    borderTopColor: MedicalColors.border,
-    paddingTop: 20,
-  },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 15,
-  },
-  infoLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: MedicalColors.textPrimary,
+  content: {
     flex: 1,
   },
-  infoValue: {
-    fontSize: 14,
-    color: MedicalColors.textSecondary,
-    flex: 1,
-    textAlign: "right",
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    flex: 1,
-    alignItems: "flex-end",
-  },
-  verifiedBadge: {
-    backgroundColor: MedicalColors.success + "20",
-  },
-  unverifiedBadge: {
-    backgroundColor: MedicalColors.error + "20",
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  verifiedText: {
-    color: MedicalColors.success,
-  },
-  unverifiedText: {
-    color: MedicalColors.error,
-  },
-  section: {
+  settingsContainer: {
     padding: 20,
   },
   sectionTitle: {
@@ -669,208 +814,323 @@ const styles = StyleSheet.create({
     color: MedicalColors.textPrimary,
     marginBottom: 15,
   },
-  settingsGroup: {
-    backgroundColor: MedicalColors.backgroundCard,
-    borderRadius: 16,
-    overflow: "hidden",
+  settingItem: {
+    backgroundColor: "white",
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 10,
     shadowColor: MedicalColors.shadowLight,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-  },
-  settingItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: MedicalColors.border,
-  },
-  settingLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
   },
   settingIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: MedicalColors.backgroundSecondary,
-    alignItems: "center",
+    backgroundColor: MedicalColors.primary + "20",
     justifyContent: "center",
+    alignItems: "center",
     marginRight: 15,
   },
   settingIconText: {
-    fontSize: 20,
+    fontSize: 18,
   },
-  settingContent: {
+  settingInfo: {
     flex: 1,
   },
   settingTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: MedicalColors.textPrimary,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   settingDescription: {
     fontSize: 14,
     color: MedicalColors.textSecondary,
   },
-  navigationArrow: {
-    fontSize: 18,
-    color: MedicalColors.textMuted,
+  adminBadge: {
+    backgroundColor: MedicalColors.error + "20",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginRight: 10,
   },
-  dangerItem: {
-    backgroundColor: MedicalColors.error + "05",
-  },
-  dangerText: {
+  adminBadgeText: {
+    fontSize: 10,
     color: MedicalColors.error,
+    fontWeight: "bold",
   },
-  logoutButton: {
-    backgroundColor: MedicalColors.error,
+  settingArrow: {
+    fontSize: 18,
+    color: MedicalColors.textSecondary,
+  },
+  systemInfo: {
+    padding: 20,
+  },
+  infoCard: {
+    backgroundColor: "white",
     borderRadius: 12,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "center",
-    marginHorizontal: 20,
-    shadowColor: MedicalColors.error,
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.2,
+    padding: 15,
+    shadowColor: MedicalColors.shadowLight,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  logoutIcon: {
-    fontSize: 20,
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  infoLabel: {
+    fontSize: 14,
+    color: MedicalColors.textSecondary,
+  },
+  infoValue: {
+    fontSize: 14,
+    color: MedicalColors.textPrimary,
+    fontWeight: "500",
+  },
+  signOutContainer: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  signOutButton: {
+    backgroundColor: MedicalColors.error + "20",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 15,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: MedicalColors.error,
+  },
+  signOutIcon: {
+    fontSize: 18,
     marginRight: 10,
   },
-  logoutButtonText: {
-    color: "#FFFFFF",
+  signOutText: {
     fontSize: 16,
-    fontWeight: "600",
+    color: MedicalColors.error,
+    fontWeight: "bold",
   },
-  modalContainer: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: MedicalColors.background,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "white",
+    borderRadius: 16,
+    width: width - 40,
+    maxHeight: "90%",
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: MedicalColors.primary,
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: MedicalColors.border,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-  },
-  modalCloseButton: {
-    padding: 8,
-  },
-  modalCloseText: {
-    fontSize: 20,
-    color: "#FFFFFF",
-    fontWeight: "bold",
-  },
-  modalContent: {
-    flex: 1,
-    padding: 20,
-  },
-  aboutSection: {
-    alignItems: "center",
-    marginBottom: 30,
-  },
-  aboutIcon: {
-    fontSize: 60,
-    marginBottom: 15,
-  },
-  aboutTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: MedicalColors.primary,
-    marginBottom: 5,
-  },
-  aboutVersion: {
-    fontSize: 16,
-    color: MedicalColors.textSecondary,
-  },
-  aboutDescription: {
-    marginBottom: 30,
-  },
-  aboutText: {
-    fontSize: 16,
-    color: MedicalColors.textPrimary,
-    lineHeight: 24,
-    marginBottom: 20,
-  },
-  featureTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: MedicalColors.textPrimary,
-    marginBottom: 10,
   },
-  featureItem: {
-    fontSize: 14,
-    color: MedicalColors.textSecondary,
-    lineHeight: 20,
-    marginBottom: 5,
-  },
-  aboutFooter: {
+  closeButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: MedicalColors.border,
+    justifyContent: "center",
     alignItems: "center",
+  },
+  closeButtonText: {
+    fontSize: 20,
+    color: MedicalColors.textSecondary,
+  },
+  modalBody: {
+    padding: 20,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: MedicalColors.textPrimary,
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: MedicalColors.border,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: MedicalColors.inputBackground,
+  },
+  disabledInput: {
+    backgroundColor: MedicalColors.border,
+    color: MedicalColors.textSecondary,
+  },
+  passwordRules: {
+    backgroundColor: MedicalColors.primary + "10",
+    padding: 15,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  passwordRulesTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: MedicalColors.textPrimary,
+    marginBottom: 8,
+  },
+  passwordRule: {
+    fontSize: 12,
+    color: MedicalColors.textSecondary,
+    marginBottom: 4,
+  },
+  modalFooter: {
+    flexDirection: "row",
+    padding: 20,
     borderTopWidth: 1,
     borderTopColor: MedicalColors.border,
-    paddingTop: 20,
+    gap: 15,
   },
-  copyright: {
-    fontSize: 14,
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: MedicalColors.border,
+    alignItems: "center",
+  },
+  cancelButtonText: {
+    fontSize: 16,
     color: MedicalColors.textSecondary,
-    marginBottom: 5,
+    fontWeight: "500",
   },
-  developer: {
-    fontSize: 12,
-    color: MedicalColors.textMuted,
+  confirmButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: MedicalColors.primary,
+    alignItems: "center",
   },
-  privacySection: {
-    marginBottom: 30,
-  },
-  privacyTitle: {
-    fontSize: 20,
+  confirmButtonText: {
+    fontSize: 16,
+    color: "white",
     fontWeight: "bold",
-    color: MedicalColors.primary,
-    marginBottom: 15,
   },
-  privacySubtitle: {
+  logTitle: {
     fontSize: 16,
     fontWeight: "bold",
     color: MedicalColors.textPrimary,
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  privacyText: {
-    fontSize: 14,
-    color: MedicalColors.textSecondary,
-    lineHeight: 20,
     marginBottom: 15,
   },
-  footer: {
-    alignItems: "center",
-    paddingBottom: 40,
-    paddingHorizontal: 20,
+  logContainer: {
+    backgroundColor: MedicalColors.background,
+    borderRadius: 8,
+    padding: 15,
+    marginBottom: 20,
   },
-  footerText: {
+  logEntry: {
     fontSize: 12,
-    color: MedicalColors.textMuted,
-    marginBottom: 4,
+    color: MedicalColors.textSecondary,
+    marginBottom: 8,
+    fontFamily: "monospace",
+  },
+  systemStatus: {
+    backgroundColor: MedicalColors.success + "10",
+    borderRadius: 8,
+    padding: 15,
+  },
+  systemStatusTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: MedicalColors.textPrimary,
+    marginBottom: 10,
+  },
+  systemStatusText: {
+    fontSize: 12,
+    color: MedicalColors.textSecondary,
+    marginBottom: 5,
+  },
+  // New styles for SectionList
+  settingItemCard: {
+    backgroundColor: "white",
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 10,
+    shadowColor: MedicalColors.shadowLight,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  settingIconCard: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: MedicalColors.primary + "20",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 15,
+  },
+  settingIconTextCard: {
+    fontSize: 18,
+  },
+  settingInfoCard: {
+    flex: 1,
+  },
+  settingTitleCard: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: MedicalColors.textPrimary,
+    marginBottom: 2,
+  },
+  settingDescriptionCard: {
+    fontSize: 14,
+    color: MedicalColors.textSecondary,
+  },
+  settingArrowCard: {
+    fontSize: 18,
+    color: MedicalColors.textSecondary,
+  },
+  signOutContainerTop: {
+    padding: 20,
+    paddingBottom: 0, // Adjust padding to be above the SectionList
+  },
+  signOutButtonTop: {
+    backgroundColor: MedicalColors.error + "20",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 15,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: MedicalColors.error,
+    shadowColor: MedicalColors.shadowLight,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  signOutIconTop: {
+    fontSize: 18,
+    marginRight: 10,
+  },
+  signOutTextTop: {
+    fontSize: 16,
+    color: MedicalColors.error,
+    fontWeight: "bold",
   },
 });

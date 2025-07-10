@@ -1,9 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -13,14 +12,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import CustomHeader from "../components/CustomHeader";
 import { ErrorMessage, SuccessMessage } from "../components/ErrorMessage";
 import { MedicalColors, MedicalIcons, RoleColors } from "../constants/Colors";
 import {
   loginWithRetry,
   resendEmailVerification,
 } from "../services/authService";
-
-const { width } = Dimensions.get("window");
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -128,16 +126,11 @@ export default function Login() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header Section */}
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Text style={styles.logoIcon}>{MedicalIcons.health}</Text>
-            <Text style={styles.logoText}>School Medicine</Text>
-          </View>
-          <Text style={styles.subtitle}>Hệ thống quản lý y tế trường học</Text>
-          <Text style={styles.description}>
-            Dành cho phụ huynh, cán bộ y tế và ban quản lý
-          </Text>
-        </View>
+        <CustomHeader
+          title="Đăng nhập"
+          subtitle="Hệ thống quản lý y tế trường học"
+          icon={<Text style={{ fontSize: 14 }}>{MedicalIcons.health}</Text>}
+        />
 
         {/* Login Card */}
         <View style={styles.loginCard}>

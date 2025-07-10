@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, Stack } from "expo-router";
 import React, { useState } from "react";
 import {
   Alert,
@@ -11,18 +11,19 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { MedicalColors } from "../../constants/Colors";
+import CustomHeader from "../../components/CustomHeader";
+import { MedicalColors, MedicalIcons } from "../../constants/Colors";
 import { useAuth } from "../../hooks/useAuth";
 
 const { width } = Dimensions.get("window");
 
 export default function SystemConfig() {
   const [schoolInfo, setSchoolInfo] = useState({
-    name: "Trường THPT ABC",
-    address: "123 Đường ABC, Quận 1, TP.HCM",
+    name: "Trường THPT Medical MMA",
+    address: "TP. Hồ Chí Minh",
     phone: "028-1234-5678",
-    email: "info@thptabc.edu.vn",
-    website: "https://thptabc.edu.vn",
+    email: "info@school.edu.vn",
+    website: "https://school.edu.vn",
   });
 
   const [notificationSettings, setNotificationSettings] = useState({
@@ -193,255 +194,315 @@ export default function SystemConfig() {
     onPress,
     style,
     icon,
+    testID,
   }: {
     title: string;
     onPress: () => void;
     style?: any;
     icon?: string;
+    testID?: string;
   }) => (
-    <TouchableOpacity style={[styles.actionButton, style]} onPress={onPress}>
+    <TouchableOpacity
+      style={[
+        styles.actionButton,
+        style,
+        {
+          borderRadius: 8,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.08,
+          shadowRadius: 3,
+          elevation: 2,
+        },
+      ]}
+      onPress={onPress}
+      activeOpacity={0.85}
+      testID={testID}
+    >
       {icon && <Text style={styles.actionButtonIcon}>{icon}</Text>}
       <Text style={styles.actionButtonText}>{title}</Text>
     </TouchableOpacity>
   );
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Cấu hình Hệ thống</Text>
-        <Text style={styles.headerSubtitle}>
-          Quản lý cài đặt và cấu hình hệ thống
-        </Text>
-      </View>
+    <>
+      <Stack.Screen options={{ headerShown: false, title: "" }} />
+      <ScrollView
+        style={styles.container}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+      >
+        {/* Header */}
+        <CustomHeader
+          title="Cấu hình hệ thống"
+          icon={<Text style={{ fontSize: 14 }}>{MedicalIcons.settings}</Text>}
+        />
 
-      {/* School Information */}
-      <ConfigSection title="🏫 Thông tin trường học">
-        <InputField
-          label="Tên trường"
-          value={schoolInfo.name}
-          onChangeText={(text) =>
-            setSchoolInfo((prev) => ({ ...prev, name: text }))
-          }
-          placeholder="Nhập tên trường"
-        />
-        <InputField
-          label="Địa chỉ"
-          value={schoolInfo.address}
-          onChangeText={(text) =>
-            setSchoolInfo((prev) => ({ ...prev, address: text }))
-          }
-          placeholder="Nhập địa chỉ"
-          multiline
-        />
-        <InputField
-          label="Số điện thoại"
-          value={schoolInfo.phone}
-          onChangeText={(text) =>
-            setSchoolInfo((prev) => ({ ...prev, phone: text }))
-          }
-          placeholder="Nhập số điện thoại"
-        />
-        <InputField
-          label="Email"
-          value={schoolInfo.email}
-          onChangeText={(text) =>
-            setSchoolInfo((prev) => ({ ...prev, email: text }))
-          }
-          placeholder="Nhập email"
-        />
-        <InputField
-          label="Website"
-          value={schoolInfo.website}
-          onChangeText={(text) =>
-            setSchoolInfo((prev) => ({ ...prev, website: text }))
-          }
-          placeholder="Nhập website"
-        />
-        <ActionButton
-          title="Lưu thông tin trường"
-          onPress={handleSaveSchoolInfo}
-          style={styles.saveButton}
-          icon="💾"
-        />
-      </ConfigSection>
-
-      {/* Notification Settings */}
-      <ConfigSection title="🔔 Cài đặt thông báo">
-        <SwitchField
-          label="Thông báo Email"
-          value={notificationSettings.emailNotifications}
-          onValueChange={(value) =>
-            setNotificationSettings((prev) => ({
-              ...prev,
-              emailNotifications: value,
-            }))
-          }
-          description="Gửi thông báo qua email"
-        />
-        <SwitchField
-          label="Thông báo SMS"
-          value={notificationSettings.smsNotifications}
-          onValueChange={(value) =>
-            setNotificationSettings((prev) => ({
-              ...prev,
-              smsNotifications: value,
-            }))
-          }
-          description="Gửi thông báo qua tin nhắn SMS"
-        />
-        <SwitchField
-          label="Thông báo Push"
-          value={notificationSettings.pushNotifications}
-          onValueChange={(value) =>
-            setNotificationSettings((prev) => ({
-              ...prev,
-              pushNotifications: value,
-            }))
-          }
-          description="Gửi thông báo push trên app"
-        />
-        <SwitchField
-          label="Thông báo nhắc nhở"
-          value={notificationSettings.reminderNotifications}
-          onValueChange={(value) =>
-            setNotificationSettings((prev) => ({
-              ...prev,
-              reminderNotifications: value,
-            }))
-          }
-          description="Gửi thông báo nhắc nhở tự động"
-        />
-        <ActionButton
-          title="Lưu cài đặt thông báo"
-          onPress={handleSaveNotificationSettings}
-          style={styles.saveButton}
-          icon="💾"
-        />
-      </ConfigSection>
-
-      {/* System Settings */}
-      <ConfigSection title="⚙️ Cài đặt hệ thống">
-        <SwitchField
-          label="Cho phép đăng ký tự do"
-          value={systemSettings.allowSelfRegistration}
-          onValueChange={(value) =>
-            setSystemSettings((prev) => ({
-              ...prev,
-              allowSelfRegistration: value,
-            }))
-          }
-          description="Người dùng có thể tự đăng ký tài khoản"
-        />
-        <SwitchField
-          label="Yêu cầu xác thực email"
-          value={systemSettings.requireEmailVerification}
-          onValueChange={(value) =>
-            setSystemSettings((prev) => ({
-              ...prev,
-              requireEmailVerification: value,
-            }))
-          }
-          description="Bắt buộc xác thực email khi đăng ký"
-        />
-        <SwitchField
-          label="Tự động duyệt phụ huynh"
-          value={systemSettings.autoApproveParents}
-          onValueChange={(value) =>
-            setSystemSettings((prev) => ({
-              ...prev,
-              autoApproveParents: value,
-            }))
-          }
-          description="Tự động phê duyệt tài khoản phụ huynh"
-        />
-        <SwitchField
-          label="Chế độ bảo trì"
-          value={systemSettings.maintenanceMode}
-          onValueChange={(value) =>
-            setSystemSettings((prev) => ({ ...prev, maintenanceMode: value }))
-          }
-          description="Chỉ admin có thể truy cập hệ thống"
-        />
-        <ActionButton
-          title="Lưu cài đặt hệ thống"
-          onPress={handleSaveSystemSettings}
-          style={styles.saveButton}
-          icon="💾"
-        />
-      </ConfigSection>
-
-      {/* Broadcast Message */}
-      <ConfigSection title="📢 Gửi thông báo chung">
-        <InputField
-          label="Nội dung thông báo"
-          value={broadcastMessage}
-          onChangeText={setBroadcastMessage}
-          placeholder="Nhập nội dung thông báo muốn gửi đến tất cả người dùng..."
-          multiline
-        />
-        <ActionButton
-          title="Gửi thông báo"
-          onPress={handleSendBroadcast}
-          style={styles.broadcastButton}
-          icon="📢"
-        />
-      </ConfigSection>
-
-      {/* Data Management */}
-      <ConfigSection title="💾 Quản lý dữ liệu">
-        <View style={styles.dataButtons}>
-          <ActionButton
-            title="Sao lưu dữ liệu"
-            onPress={handleBackupData}
-            style={styles.backupButton}
-            icon="🗄️"
-          />
-          <ActionButton
-            title="Xuất dữ liệu"
-            onPress={handleExportData}
-            style={styles.exportButton}
-            icon="📤"
-          />
-        </View>
-      </ConfigSection>
-
-      {/* Quick Actions */}
-      <ConfigSection title="⚡ Thao tác nhanh">
-        <View style={styles.quickActions}>
-          <ActionButton
-            title="Import Users"
-            onPress={() => router.push("/AdminImport")}
-            style={styles.importButton}
-            icon="📥"
-          />
-          <ActionButton
-            title="Xem Log hệ thống"
-            onPress={() =>
-              Alert.alert("Thông báo", "Chức năng đang phát triển")
+        {/* School Information */}
+        <ConfigSection title="🏫 Thông tin trường học">
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+            <View style={{ flex: 1, minWidth: (width - 80) / 2 }}>
+              <InputField
+                label="Tên trường"
+                value={schoolInfo.name}
+                onChangeText={(text) =>
+                  setSchoolInfo((prev) => ({ ...prev, name: text }))
+                }
+                placeholder="Nhập tên trường"
+              />
+            </View>
+            <View style={{ flex: 1, minWidth: (width - 80) / 2 }}>
+              <InputField
+                label="Số điện thoại"
+                value={schoolInfo.phone}
+                onChangeText={(text) =>
+                  setSchoolInfo((prev) => ({ ...prev, phone: text }))
+                }
+                placeholder="Nhập số điện thoại"
+              />
+            </View>
+          </View>
+          <InputField
+            label="Email"
+            value={schoolInfo.email}
+            onChangeText={(text) =>
+              setSchoolInfo((prev) => ({ ...prev, email: text }))
             }
-            style={styles.logButton}
-            icon="📋"
+            placeholder="Nhập email"
+          />
+          <InputField
+            label="Website"
+            value={schoolInfo.website}
+            onChangeText={(text) =>
+              setSchoolInfo((prev) => ({ ...prev, website: text }))
+            }
+            placeholder="Nhập website"
+          />
+          <InputField
+            label="Địa chỉ"
+            value={schoolInfo.address}
+            onChangeText={(text) =>
+              setSchoolInfo((prev) => ({ ...prev, address: text }))
+            }
+            placeholder="Nhập địa chỉ"
+            multiline
           />
           <ActionButton
-            title="Kiểm tra hệ thống"
-            onPress={() =>
-              Alert.alert("Thông báo", "Hệ thống đang hoạt động bình thường")
-            }
-            style={styles.checkButton}
-            icon="🔍"
+            title="Lưu thông tin trường"
+            onPress={handleSaveSchoolInfo}
+            style={styles.saveButton}
+            icon="💾"
+          />
+        </ConfigSection>
+
+        {/* Notification Settings */}
+        <ConfigSection title="🔔 Cài đặt thông báo">
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+            <View style={{ flex: 1, minWidth: (width - 80) / 2 }}>
+              <SwitchField
+                label="Thông báo Email"
+                value={notificationSettings.emailNotifications}
+                onValueChange={(value) =>
+                  setNotificationSettings((prev) => ({
+                    ...prev,
+                    emailNotifications: value,
+                  }))
+                }
+                description="Gửi thông báo qua email"
+              />
+            </View>
+            <View style={{ flex: 1, minWidth: (width - 80) / 2 }}>
+              <SwitchField
+                label="Thông báo Push"
+                value={notificationSettings.pushNotifications}
+                onValueChange={(value) =>
+                  setNotificationSettings((prev) => ({
+                    ...prev,
+                    pushNotifications: value,
+                  }))
+                }
+                description="Gửi thông báo push trên app"
+              />
+            </View>
+          </View>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+            <View style={{ flex: 1, minWidth: (width - 80) / 2 }}>
+              <SwitchField
+                label="Thông báo SMS"
+                value={notificationSettings.smsNotifications}
+                onValueChange={(value) =>
+                  setNotificationSettings((prev) => ({
+                    ...prev,
+                    smsNotifications: value,
+                  }))
+                }
+                description="Gửi thông báo qua tin nhắn SMS"
+              />
+            </View>
+            <View style={{ flex: 1, minWidth: (width - 80) / 2 }}>
+              <SwitchField
+                label="Thông báo nhắc nhở"
+                value={notificationSettings.reminderNotifications}
+                onValueChange={(value) =>
+                  setNotificationSettings((prev) => ({
+                    ...prev,
+                    reminderNotifications: value,
+                  }))
+                }
+                description="Gửi thông báo nhắc nhở tự động"
+              />
+            </View>
+          </View>
+          <ActionButton
+            title="Lưu cài đặt thông báo"
+            onPress={handleSaveNotificationSettings}
+            style={styles.saveButton}
+            icon="💾"
+          />
+        </ConfigSection>
+
+        {/* System Settings */}
+        <ConfigSection title="⚙️ Cài đặt hệ thống">
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+            <View style={{ flex: 1, minWidth: (width - 80) / 2 }}>
+              <SwitchField
+                label="Cho phép đăng ký tự do"
+                value={systemSettings.allowSelfRegistration}
+                onValueChange={(value) =>
+                  setSystemSettings((prev) => ({
+                    ...prev,
+                    allowSelfRegistration: value,
+                  }))
+                }
+                description="Người dùng có thể tự đăng ký tài khoản"
+              />
+            </View>
+            <View style={{ flex: 1, minWidth: (width - 80) / 2 }}>
+              <SwitchField
+                label="Yêu cầu xác thực email"
+                value={systemSettings.requireEmailVerification}
+                onValueChange={(value) =>
+                  setSystemSettings((prev) => ({
+                    ...prev,
+                    requireEmailVerification: value,
+                  }))
+                }
+                description="Bắt buộc xác thực email khi đăng ký"
+              />
+            </View>
+          </View>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+            <View style={{ flex: 1, minWidth: (width - 80) / 2 }}>
+              <SwitchField
+                label="Tự động duyệt phụ huynh"
+                value={systemSettings.autoApproveParents}
+                onValueChange={(value) =>
+                  setSystemSettings((prev) => ({
+                    ...prev,
+                    autoApproveParents: value,
+                  }))
+                }
+                description="Tự động phê duyệt tài khoản phụ huynh"
+              />
+            </View>
+            <View style={{ flex: 1, minWidth: (width - 80) / 2 }}>
+              <SwitchField
+                label="Chế độ bảo trì"
+                value={systemSettings.maintenanceMode}
+                onValueChange={(value) =>
+                  setSystemSettings((prev) => ({
+                    ...prev,
+                    maintenanceMode: value,
+                  }))
+                }
+                description="Chỉ admin có thể truy cập hệ thống"
+              />
+            </View>
+          </View>
+          <ActionButton
+            title="Lưu cài đặt hệ thống"
+            onPress={handleSaveSystemSettings}
+            style={styles.saveButton}
+            icon="💾"
+          />
+        </ConfigSection>
+
+        {/* Broadcast Message */}
+        <ConfigSection title="📢 Gửi thông báo chung">
+          <InputField
+            label="Nội dung thông báo"
+            value={broadcastMessage}
+            onChangeText={setBroadcastMessage}
+            placeholder="Nhập nội dung thông báo muốn gửi đến tất cả người dùng..."
+            multiline
           />
           <ActionButton
-            title="Làm mới cache"
-            onPress={() =>
-              Alert.alert("Thành công", "Đã làm mới cache hệ thống")
-            }
-            style={styles.refreshButton}
-            icon="🔄"
+            title="Gửi thông báo"
+            onPress={handleSendBroadcast}
+            style={styles.broadcastButton}
+            icon="📢"
           />
-        </View>
-      </ConfigSection>
-    </ScrollView>
+        </ConfigSection>
+
+        {/* Data Management & Quick Actions */}
+        <ConfigSection title="💾 Quản lý dữ liệu & Thao tác">
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+            <ActionButton
+              title="Sao lưu dữ liệu"
+              onPress={handleBackupData}
+              style={styles.backupButton}
+              icon="🗄️"
+            />
+            <ActionButton
+              title="Xuất dữ liệu"
+              onPress={handleExportData}
+              style={styles.exportButton}
+              icon="📤"
+            />
+            <ActionButton
+              title="Import Users"
+              onPress={() => router.push("/AdminImport")}
+              style={styles.importButton}
+              icon="📥"
+              testID="import-users-btn"
+            />
+            <ActionButton
+              title="Kiểm tra hệ thống"
+              onPress={() =>
+                Alert.alert("Thông báo", "Hệ thống đang hoạt động bình thường")
+              }
+              style={styles.checkButton}
+              icon="🔍"
+              testID="check-btn"
+            />
+          </View>
+        </ConfigSection>
+
+        {/* Logout Section */}
+        <ConfigSection title="🚪 Thoát hệ thống">
+          <ActionButton
+            title="Đăng xuất"
+            onPress={() => {
+              Alert.alert(
+                "Xác nhận đăng xuất",
+                "Bạn có chắc muốn đăng xuất khỏi hệ thống?",
+                [
+                  { text: "Hủy", style: "cancel" },
+                  {
+                    text: "Đăng xuất",
+                    style: "destructive",
+                    onPress: () => router.replace("/Login"),
+                  },
+                ]
+              );
+            }}
+            style={styles.logoutButton}
+            icon="🚪"
+            testID="logout-btn"
+          />
+        </ConfigSection>
+      </ScrollView>
+    </>
   );
 }
 
@@ -470,18 +531,18 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   section: {
-    margin: 20,
+    margin: 16,
     marginBottom: 0,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
+    fontSize: 16,
+    fontWeight: "600",
     color: MedicalColors.textPrimary,
-    marginBottom: 15,
+    marginBottom: 12,
   },
   sectionContent: {
     backgroundColor: MedicalColors.backgroundCard,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     shadowColor: MedicalColors.shadowLight,
     shadowOffset: { width: 0, height: 2 },
@@ -490,45 +551,45 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   inputGroup: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   inputLabel: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 13,
+    fontWeight: "500",
     color: MedicalColors.textPrimary,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   input: {
     borderWidth: 1,
     borderColor: MedicalColors.borderMedium,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
+    borderRadius: 6,
+    padding: 10,
+    fontSize: 14,
     backgroundColor: MedicalColors.backgroundSecondary,
   },
   multilineInput: {
-    height: 80,
+    height: 70,
     textAlignVertical: "top",
   },
   switchGroup: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 12,
   },
   switchInfo: {
     flex: 1,
     marginRight: 12,
   },
   switchLabel: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: 14,
+    fontWeight: "500",
     color: MedicalColors.textPrimary,
   },
   switchDescription: {
-    fontSize: 12,
+    fontSize: 11,
     color: MedicalColors.textSecondary,
-    marginTop: 2,
+    marginTop: 1,
   },
   actionButton: {
     flexDirection: "row",
@@ -537,10 +598,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
-    marginTop: 12,
+    marginTop: 8,
+    flex: 1,
+    minWidth: (width - 80) / 2,
   },
   actionButtonIcon: {
-    fontSize: 16,
+    fontSize: 14,
     marginRight: 8,
   },
   actionButtonText: {
@@ -554,37 +617,52 @@ const styles = StyleSheet.create({
   broadcastButton: {
     backgroundColor: "#3498DB",
   },
-  dataButtons: {
-    flexDirection: "row",
-    gap: 12,
-  },
   backupButton: {
     backgroundColor: "#9B59B6",
-    flex: 1,
   },
   exportButton: {
     backgroundColor: "#E67E22",
-    flex: 1,
-  },
-  quickActions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
   },
   importButton: {
     backgroundColor: "#2ECC71",
-    width: (width - 64) / 2,
-  },
-  logButton: {
-    backgroundColor: "#34495E",
-    width: (width - 64) / 2,
   },
   checkButton: {
     backgroundColor: "#16A085",
-    width: (width - 64) / 2,
   },
-  refreshButton: {
-    backgroundColor: "#F39C12",
-    width: (width - 64) / 2,
+  logoutButton: {
+    backgroundColor: "#E74C3C",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: MedicalColors.backgroundSecondary,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: MedicalColors.textPrimary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: MedicalColors.backgroundSecondary,
+  },
+  errorText: {
+    fontSize: 18,
+    color: MedicalColors.textPrimary,
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: MedicalColors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
 });

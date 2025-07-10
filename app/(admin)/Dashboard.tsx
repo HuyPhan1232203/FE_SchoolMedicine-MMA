@@ -2,16 +2,18 @@ import { router } from "expo-router";
 import { collection, getDocs } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import {
+  ActionSheetIOS,
   ActivityIndicator,
   Dimensions,
+  Platform,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { MedicalColors } from "../../constants/Colors";
+import CustomHeader from "../../components/CustomHeader";
+import { MedicalColors, MedicalIcons } from "../../constants/Colors";
 import { useAuth } from "../../hooks/useAuth";
 import { db } from "../../lib/firebase";
 import {
@@ -57,21 +59,30 @@ export default function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { userProfile } = useAuth();
+  const [showMenu, setShowMenu] = useState(false);
+
+  useEffect(() => {
+    if (userProfile && userProfile.role !== "administrator") {
+      router.replace("/Login");
+    }
+  }, [userProfile]);
 
   const loadDashboardData = async () => {
     try {
-      // Load users data
-      const usersRef = collection(db, "users");
-      const usersSnapshot = await getDocs(usersRef);
-      const users: UserProfile[] = [];
+      setError(null);
 
+      // Load users and medical events in parallel for better performance
+      const [usersSnapshot, medicalEvents] = await Promise.all([
+        getDocs(collection(db, "users")),
+        getMedicalEvents(),
+      ]);
+
+      const users: UserProfile[] = [];
       usersSnapshot.forEach((doc) => {
         users.push(doc.data() as UserProfile);
       });
-
-      // Load medical events
-      const medicalEvents = await getMedicalEvents();
 
       // Calculate stats
       const totalUsers = users.length;
@@ -124,6 +135,7 @@ export default function Dashboard() {
       });
     } catch (error) {
       console.error("Error loading dashboard data:", error);
+      setError("Không thể tải dữ liệu dashboard. Vui lòng thử lại.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -159,411 +171,542 @@ export default function Dashboard() {
     onPress?: () => void;
   }) => (
     <TouchableOpacity
-      style={[styles.statCard, { borderLeftColor: color }]}
+      style={{
+        backgroundColor: "#fff",
+        borderRadius: 16,
+        padding: 20,
+        width: (width - 48) / 2,
+        marginBottom: 12,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+        borderLeftWidth: 4,
+        borderLeftColor: color,
+      }}
       onPress={onPress}
       disabled={!onPress}
+      activeOpacity={0.85}
     >
-      <View style={styles.statCardContent}>
-        <Text style={styles.statIcon}>{icon}</Text>
-        <View style={styles.statInfo}>
-          <Text style={styles.statValue}>{value}</Text>
-          <Text style={styles.statTitle}>{title}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        <View
+          style={{
+            width: 40,
+            height: 40,
+            borderRadius: 20,
+            backgroundColor: color + "20",
+            justifyContent: "center",
+            alignItems: "center",
+            marginRight: 12,
+          }}
+        >
+          <Text style={{ fontSize: 20 }}>{icon}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{
+              fontSize: 20,
+              fontWeight: "bold",
+              color: MedicalColors.textPrimary,
+              marginBottom: 2,
+            }}
+          >
+            {value}
+          </Text>
+          <Text
+            style={{
+              fontSize: 13,
+              color: MedicalColors.textSecondary,
+              fontWeight: "500",
+            }}
+          >
+            {title}
+          </Text>
         </View>
       </View>
     </TouchableOpacity>
   );
 
+  const handleMenu = () => {
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ["Huỷ", "Đăng xuất", "Cài đặt", "Thông tin"],
+          destructiveButtonIndex: 1,
+          cancelButtonIndex: 0,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            // Đăng xuất
+            router.replace("/Login");
+          }
+          // Thêm các chức năng khác nếu cần
+        }
+      );
+    } else {
+      setShowMenu(true);
+    }
+  };
+
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={MedicalColors.primary} />
-        <Text style={styles.loadingText}>Đang tải dashboard...</Text>
+      <View
+        style={{ flex: 1, backgroundColor: MedicalColors.backgroundSecondary }}
+      >
+        <CustomHeader
+          title="Tổng quan"
+          icon={<Text style={{ fontSize: 14 }}>{MedicalIcons.info}</Text>}
+        />
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <ActivityIndicator size="large" color={MedicalColors.primary} />
+          <Text style={{ marginTop: 10, color: MedicalColors.textSecondary }}>
+            Đang tải dashboard...
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View
+        style={{ flex: 1, backgroundColor: MedicalColors.backgroundSecondary }}
+      >
+        <CustomHeader
+          title="Tổng quan"
+          icon={<Text style={{ fontSize: 14 }}>{MedicalIcons.info}</Text>}
+        />
+        <View
+          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+        >
+          <Text style={{ fontSize: 20, color: "#E74C3C", marginBottom: 10 }}>
+            ⚠️
+          </Text>
+          <Text
+            style={{
+              fontSize: 16,
+              color: MedicalColors.textPrimary,
+              marginBottom: 10,
+            }}
+          >
+            {error}
+          </Text>
+          <TouchableOpacity
+            style={{
+              backgroundColor: MedicalColors.primary,
+              paddingVertical: 10,
+              paddingHorizontal: 20,
+              borderRadius: 10,
+            }}
+            onPress={loadDashboardData}
+          >
+            <Text style={{ color: "#fff", fontSize: 16, fontWeight: "bold" }}>
+              Thử lại
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.welcomeText}>
-          Chào mừng, {userProfile?.fullName}
-        </Text>
-        <Text style={styles.headerTitle}>Dashboard Quản Trị</Text>
-        <Text style={styles.headerSubtitle}>
-          Tổng quan hệ thống y tế học đường
-        </Text>
-      </View>
-
-      {/* Quick Stats */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>📊 Thống kê tổng quan</Text>
-        <View style={styles.statsGrid}>
-          <StatCard
-            title="Tổng Users"
-            value={stats.totalUsers}
-            icon="👥"
-            color={MedicalColors.primary}
-            onPress={() => router.push("/(admin)/UserManagement" as any)}
-          />
-          <StatCard
-            title="Đang hoạt động"
-            value={stats.activeUsers}
-            icon="🟢"
-            color="#27AE60"
-          />
-          <StatCard
-            title="Chờ duyệt"
-            value={stats.pendingUsers}
-            icon="⏳"
-            color="#F39C12"
-            onPress={() => router.push("/(admin)/RequestApproval" as any)}
-          />
-          <StatCard
-            title="Sự kiện Y tế"
-            value={stats.totalMedicalEvents}
-            icon="🏥"
-            color="#E74C3C"
-          />
-        </View>
-      </View>
-
-      {/* User Role Distribution */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>👨‍👩‍👧‍👦 Phân bố vai trò</Text>
-        <View style={styles.roleGrid}>
-          <StatCard
-            title="Phụ huynh"
-            value={stats.totalParents}
-            icon="👨‍👩‍👧‍👦"
-            color="#3498DB"
-          />
-          <StatCard
-            title="Cán bộ Y tế"
-            value={stats.totalMedicalStaff}
-            icon="👩‍⚕️"
-            color="#9B59B6"
-          />
-          <StatCard
-            title="Quản trị viên"
-            value={stats.totalAdmins}
-            icon="👨‍💼"
-            color="#E67E22"
-          />
-        </View>
-      </View>
-
-      {/* User Status Distribution */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>📈 Trạng thái tài khoản</Text>
-        <View style={styles.statusGrid}>
-          <StatCard
-            title="Bị từ chối"
-            value={stats.rejectedUsers}
-            icon="❌"
-            color="#E74C3C"
-          />
-          <StatCard
-            title="Bị tạm dừng"
-            value={stats.suspendedUsers}
-            icon="⛔"
-            color="#E67E22"
-          />
-        </View>
-      </View>
-
-      {/* Recent Activity */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🕐 Hoạt động gần đây</Text>
-
-        {/* Recent Users */}
-        <View style={styles.recentSection}>
-          <Text style={styles.recentTitle}>Người dùng mới</Text>
-          {stats.recentUsers.map((user, index) => (
-            <View key={user.uid} style={styles.recentItem}>
-              <View style={styles.recentItemLeft}>
-                <Text style={styles.recentItemIcon}>👤</Text>
-                <View>
-                  <Text style={styles.recentItemName}>{user.fullName}</Text>
-                  <Text style={styles.recentItemDetail}>
-                    {user.role === UserRole.PARENT
-                      ? "Phụ huynh"
-                      : user.role === UserRole.MEDICAL_STAFF
-                      ? "Cán bộ Y tế"
-                      : "Quản trị viên"}
+    <>
+      {/* Header mới đồng nhất */}
+      <CustomHeader
+        title="Tổng quan"
+        icon={<Text style={{ fontSize: 14 }}>{MedicalIcons.info}</Text>}
+      />
+      <View
+        style={{ flex: 1, backgroundColor: MedicalColors.backgroundSecondary }}
+      >
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: 120 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          {/* Main Stats */}
+          <View style={{ marginBottom: 20, paddingHorizontal: 16 }}>
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "bold",
+                color: MedicalColors.textPrimary,
+                marginBottom: 12,
+              }}
+            >
+              📊 Thống kê tổng quan
+            </Text>
+            <View
+              style={{
+                backgroundColor: "#fff",
+                borderRadius: 16,
+                padding: 16,
+                shadowColor: MedicalColors.shadowLight,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 3,
+              }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  marginBottom: 16,
+                }}
+              >
+                <View style={{ alignItems: "center", flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 24,
+                      fontWeight: "bold",
+                      color: MedicalColors.primary,
+                    }}
+                  >
+                    {stats.totalUsers}
+                  </Text>
+                  <Text
+                    style={{ fontSize: 12, color: MedicalColors.textSecondary }}
+                  >
+                    Tổng Users
+                  </Text>
+                </View>
+                <View style={{ alignItems: "center", flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 24,
+                      fontWeight: "bold",
+                      color: "#27AE60",
+                    }}
+                  >
+                    {stats.activeUsers}
+                  </Text>
+                  <Text
+                    style={{ fontSize: 12, color: MedicalColors.textSecondary }}
+                  >
+                    Đang hoạt động
+                  </Text>
+                </View>
+                <View style={{ alignItems: "center", flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 24,
+                      fontWeight: "bold",
+                      color: "#F39C12",
+                    }}
+                  >
+                    {stats.pendingUsers}
+                  </Text>
+                  <Text
+                    style={{ fontSize: 12, color: MedicalColors.textSecondary }}
+                  >
+                    Chờ duyệt
                   </Text>
                 </View>
               </View>
-              <View style={styles.recentItemRight}>
-                <Text
-                  style={[
-                    styles.recentItemStatus,
-                    { color: getStatusDisplayInfo(user.status).color },
-                  ]}
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                }}
+              >
+                <View style={{ alignItems: "center", flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 24,
+                      fontWeight: "bold",
+                      color: "#E74C3C",
+                    }}
+                  >
+                    {stats.totalMedicalEvents}
+                  </Text>
+                  <Text
+                    style={{ fontSize: 12, color: MedicalColors.textSecondary }}
+                  >
+                    Sự kiện Y tế
+                  </Text>
+                </View>
+                <View style={{ alignItems: "center", flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 24,
+                      fontWeight: "bold",
+                      color: "#9B59B6",
+                    }}
+                  >
+                    {stats.totalParents}
+                  </Text>
+                  <Text
+                    style={{ fontSize: 12, color: MedicalColors.textSecondary }}
+                  >
+                    Phụ huynh
+                  </Text>
+                </View>
+                <View style={{ alignItems: "center", flex: 1 }}>
+                  <Text
+                    style={{
+                      fontSize: 24,
+                      fontWeight: "bold",
+                      color: "#3498DB",
+                    }}
+                  >
+                    {stats.totalMedicalStaff}
+                  </Text>
+                  <Text
+                    style={{ fontSize: 12, color: MedicalColors.textSecondary }}
+                  >
+                    Cán bộ Y tế
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Quick Actions */}
+          <View style={{ marginBottom: 20, paddingHorizontal: 16 }}>
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "bold",
+                color: MedicalColors.textPrimary,
+                marginBottom: 12,
+              }}
+            >
+              ⚡ Thao tác nhanh
+            </Text>
+            <View
+              style={{
+                backgroundColor: "#fff",
+                borderRadius: 16,
+                padding: 16,
+                shadowColor: MedicalColors.shadowLight,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 3,
+              }}
+            >
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+                {[
+                  {
+                    key: "user-management",
+                    icon: "👥",
+                    text: "Quản lý User",
+                    onPress: () =>
+                      router.push("/(admin)/UserManagement" as any),
+                    color: MedicalColors.primary,
+                  },
+                  {
+                    key: "request-approval",
+                    icon: "✅",
+                    text: "Duyệt yêu cầu",
+                    onPress: () =>
+                      router.push("/(admin)/RequestApproval" as any),
+                    color: MedicalColors.success,
+                  },
+                  {
+                    key: "admin-import",
+                    icon: "📤",
+                    text: "Import Users",
+                    onPress: () => router.push("/AdminImport"),
+                    color: MedicalColors.warning,
+                  },
+                  {
+                    key: "system-config",
+                    icon: "⚙️",
+                    text: "Cấu hình",
+                    onPress: () => router.push("/(admin)/SystemConfig" as any),
+                    color: MedicalColors.accent,
+                  },
+                ].map((item) => (
+                  <TouchableOpacity
+                    key={item.key}
+                    style={{
+                      backgroundColor: item.color + "10",
+                      borderRadius: 12,
+                      padding: 16,
+                      width: (width - 80) / 2,
+                      alignItems: "center",
+                      borderWidth: 1,
+                      borderColor: item.color + "30",
+                    }}
+                    onPress={item.onPress}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={{ fontSize: 24, marginBottom: 8 }}>
+                      {item.icon}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: "600",
+                        color: MedicalColors.textPrimary,
+                        textAlign: "center",
+                      }}
+                    >
+                      {item.text}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          </View>
+
+          {/* Recent Activity */}
+          <View style={{ marginBottom: 24, paddingHorizontal: 16 }}>
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: "bold",
+                color: MedicalColors.textPrimary,
+                marginBottom: 12,
+              }}
+            >
+              🕐 Hoạt động gần đây
+            </Text>
+            <View
+              style={{
+                backgroundColor: "#fff",
+                borderRadius: 16,
+                padding: 16,
+                shadowColor: MedicalColors.shadowLight,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+                elevation: 3,
+              }}
+            >
+              <View style={{ flexDirection: "row", marginBottom: 16 }}>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    alignItems: "center",
+                    paddingVertical: 8,
+                    borderBottomWidth: 2,
+                    borderBottomColor: MedicalColors.primary,
+                  }}
                 >
-                  {getStatusDisplayInfo(user.status).icon}
-                </Text>
-                <Text style={styles.recentItemDate}>
-                  {formatDate(user.createdAt)}
-                </Text>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontWeight: "600",
+                      color: MedicalColors.primary,
+                    }}
+                  >
+                    Người dùng mới ({stats.recentUsers.length})
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{
+                    flex: 1,
+                    alignItems: "center",
+                    paddingVertical: 8,
+                    borderBottomWidth: 2,
+                    borderBottomColor: "transparent",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      fontWeight: "600",
+                      color: MedicalColors.textSecondary,
+                    }}
+                  >
+                    Sự kiện Y tế ({stats.recentEvents.length})
+                  </Text>
+                </TouchableOpacity>
               </View>
-            </View>
-          ))}
-        </View>
 
-        {/* Recent Medical Events */}
-        <View style={styles.recentSection}>
-          <Text style={styles.recentTitle}>Sự kiện Y tế gần đây</Text>
-          {stats.recentEvents.map((event, index) => (
-            <View key={event.id} style={styles.recentItem}>
-              <View style={styles.recentItemLeft}>
-                <Text style={styles.recentItemIcon}>🏥</Text>
-                <View>
-                  <Text style={styles.recentItemName}>{event.fullName}</Text>
-                  <Text style={styles.recentItemDetail}>
-                    {event.eventType} - {event.grade}
+              {stats.recentUsers.slice(0, 3).map((user) => (
+                <View
+                  key={user.uid}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingVertical: 12,
+                    borderBottomWidth: 1,
+                    borderBottomColor: "#f5f5f5",
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      backgroundColor: MedicalColors.primary + "20",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginRight: 12,
+                    }}
+                  >
+                    <Text style={{ fontSize: 16 }}>👤</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        fontWeight: "600",
+                        color: MedicalColors.textPrimary,
+                      }}
+                    >
+                      {user.fullName}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        color: MedicalColors.textSecondary,
+                        marginTop: 2,
+                      }}
+                    >
+                      {user.role === UserRole.PARENT
+                        ? "Phụ huynh"
+                        : user.role === UserRole.MEDICAL_STAFF
+                        ? "Cán bộ Y tế"
+                        : "Quản trị viên"}{" "}
+                      • {formatDate(user.createdAt)}
+                    </Text>
+                  </View>
+                  <View
+                    style={{
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 8,
+                      backgroundColor:
+                        getStatusDisplayInfo(user.status).color + "20",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: "600",
+                        color: getStatusDisplayInfo(user.status).color,
+                      }}
+                    >
+                      {getStatusDisplayInfo(user.status).icon}{" "}
+                      {getStatusDisplayInfo(user.status).name}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+
+              {stats.recentUsers.length === 0 && (
+                <View style={{ alignItems: "center", paddingVertical: 20 }}>
+                  <Text
+                    style={{ fontSize: 16, color: MedicalColors.textSecondary }}
+                  >
+                    Chưa có người dùng mới
                   </Text>
                 </View>
-              </View>
-              <View style={styles.recentItemRight}>
-                <Text style={styles.recentItemDate}>
-                  {formatDate(event.createdAt)}
-                </Text>
-              </View>
+              )}
             </View>
-          ))}
-        </View>
+          </View>
+        </ScrollView>
       </View>
-
-      {/* Quick Actions */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>⚡ Thao tác nhanh</Text>
-        <View style={styles.quickActions}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => router.push("/(admin)/UserManagement" as any)}
-          >
-            <Text style={styles.actionButtonIcon}>👥</Text>
-            <Text style={styles.actionButtonText}>Quản lý User</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => router.push("/(admin)/RequestApproval" as any)}
-          >
-            <Text style={styles.actionButtonIcon}>✅</Text>
-            <Text style={styles.actionButtonText}>Duyệt yêu cầu</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => router.push("/AdminImport")}
-          >
-            <Text style={styles.actionButtonIcon}>📤</Text>
-            <Text style={styles.actionButtonText}>Import Users</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => router.push("/(admin)/SystemConfig" as any)}
-          >
-            <Text style={styles.actionButtonIcon}>⚙️</Text>
-            <Text style={styles.actionButtonText}>Cấu hình</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </ScrollView>
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: MedicalColors.backgroundSecondary,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: MedicalColors.backgroundSecondary,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: "#666",
-  },
-  header: {
-    backgroundColor: MedicalColors.primary,
-    paddingTop: 60,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-  },
-  welcomeText: {
-    fontSize: 16,
-    color: "#FFFFFF",
-    opacity: 0.9,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#FFFFFF",
-    marginTop: 5,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: "#FFFFFF",
-    opacity: 0.8,
-    marginTop: 5,
-  },
-  section: {
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: MedicalColors.textPrimary,
-    marginBottom: 15,
-  },
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  roleGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  statusGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  statCard: {
-    backgroundColor: MedicalColors.backgroundCard,
-    borderRadius: 12,
-    padding: 16,
-    borderLeftWidth: 4,
-    shadowColor: MedicalColors.shadowLight,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    width: (width - 50) / 2,
-    marginBottom: 10,
-  },
-  statCardContent: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  statIcon: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  statInfo: {
-    flex: 1,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: MedicalColors.textPrimary,
-  },
-  statTitle: {
-    fontSize: 12,
-    color: MedicalColors.textSecondary,
-    marginTop: 2,
-  },
-  recentSection: {
-    backgroundColor: MedicalColors.backgroundCard,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: MedicalColors.shadowLight,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  recentTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: MedicalColors.textPrimary,
-    marginBottom: 12,
-  },
-  recentItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
-  recentItemLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  recentItemIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  recentItemName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: MedicalColors.textPrimary,
-  },
-  recentItemDetail: {
-    fontSize: 12,
-    color: MedicalColors.textSecondary,
-    marginTop: 2,
-  },
-  recentItemRight: {
-    alignItems: "flex-end",
-  },
-  recentItemStatus: {
-    fontSize: 16,
-  },
-  recentItemDate: {
-    fontSize: 12,
-    color: MedicalColors.textSecondary,
-    marginTop: 2,
-  },
-  quickActions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  actionButton: {
-    backgroundColor: MedicalColors.backgroundCard,
-    borderRadius: 12,
-    padding: 20,
-    alignItems: "center",
-    shadowColor: MedicalColors.shadowLight,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    width: (width - 50) / 2,
-  },
-  actionButtonIcon: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: MedicalColors.textPrimary,
-    textAlign: "center",
-  },
-});

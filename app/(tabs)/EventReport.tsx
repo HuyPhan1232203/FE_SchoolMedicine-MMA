@@ -1,362 +1,778 @@
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { Picker } from "@react-native-picker/picker"; // Cài: npm i @react-native-picker/picker
-import { collection, getDocs, Timestamp } from "firebase/firestore";
-import React, { useEffect, useState } from "react";
+import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
-  FlatList,
+  Dimensions,
   Modal,
-  Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import CustomHeader from "../../components/CustomHeader";
 import { MedicalColors, MedicalIcons } from "../../constants/Colors";
-import { db } from "../../lib/firebase"; // Đường dẫn đúng tới firebase config
-import {
-  addMedicalEvent,
-  deleteMedicalEvent,
-  getMedicalEvents,
-  MedicalEvent,
-  updateMedicalEvent,
-} from "../../services/medicalEventService";
+import { useAuth } from "../../hooks/useAuth";
 
-const emptyEvent = {
-  eventType: "",
-  description: "",
-  eventTime: "",
-  fullName: "",
-  grade: "",
-  notes: "",
-  reportedBy: "",
-  studentId: "",
-};
+const { width } = Dimensions.get("window");
+
+interface MedicalEvent {
+  id: string;
+  title: string;
+  description: string;
+  severity: "low" | "medium" | "high" | "critical";
+  type: "injury" | "illness" | "allergy" | "accident" | "other";
+  location: string;
+  date: string;
+  time: string;
+  reportedBy: string;
+  status: "reported" | "investigating" | "resolved" | "closed";
+  affectedStudents: string[];
+  actions: string[];
+  notes?: string;
+}
+
+interface EventForm {
+  title: string;
+  description: string;
+  severity: "low" | "medium" | "high" | "critical";
+  type: "injury" | "illness" | "allergy" | "accident" | "other";
+  location: string;
+  affectedStudents: string;
+  notes: string;
+}
 
 export default function EventReport() {
-  const [events, setEvents] = useState<(MedicalEvent & { id: string })[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState<any>(emptyEvent);
-  const [formLoading, setFormLoading] = useState(false);
-  // Thêm state để điều khiển picker
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [students, setStudents] = useState<any[]>([]);
+  const { userProfile } = useAuth();
+  const router = useRouter();
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<MedicalEvent | null>(null);
+  const [activeFilter, setActiveFilter] = useState<
+    "all" | "recent" | "critical"
+  >("all");
+  const [formData, setFormData] = useState<EventForm>({
+    title: "",
+    description: "",
+    severity: "medium",
+    type: "injury",
+    location: "",
+    affectedStudents: "",
+    notes: "",
+  });
 
-  const fetchEvents = async () => {
-    setLoading(true);
-    try {
-      const data = await getMedicalEvents();
-      console.log("Fetched events:", data);
-      setEvents(data as (MedicalEvent & { id: string })[]);
-    } catch (error) {
-      console.error("Error fetching events:", error);
+  const userRole = userProfile?.role || "parent";
+
+  // Mock data - would come from backend
+  const medicalEvents: MedicalEvent[] = [
+    {
+      id: "1",
+      title: "Chấn thương trong giờ thể dục",
+      description:
+        "Học sinh bị ngã trong lúc chạy bộ, có vết thương nhẹ ở đầu gối",
+      severity: "medium",
+      type: "injury",
+      location: "Sân thể dục",
+      date: "15/12/2024",
+      time: "14:30",
+      reportedBy: "GV. Nguyễn Văn An",
+      status: "resolved",
+      affectedStudents: ["Nguyễn Thị Bình - Lớp 10A1"],
+      actions: ["Sơ cứu tại chỗ", "Gọi phụ huynh", "Đưa đến phòng y tế"],
+      notes: "Học sinh đã được chăm sóc và về nhà an toàn",
+    },
+    {
+      id: "2",
+      title: "Phản ứng dị ứng thức ăn",
+      description: "Học sinh có biểu hiện dị ứng sau khi ăn trưa",
+      severity: "high",
+      type: "allergy",
+      location: "Căng tin trường",
+      date: "14/12/2024",
+      time: "12:15",
+      reportedBy: "Y tá Trần Thị Lan",
+      status: "investigating",
+      affectedStudents: ["Lê Văn Cường - Lớp 11B2"],
+      actions: [
+        "Cho uống thuốc dị ứng",
+        "Theo dõi triệu chứng",
+        "Liên hệ phụ huynh",
+      ],
+      notes: "Cần kiểm tra thực đơn căng tin",
+    },
+    {
+      id: "3",
+      title: "Sốt cao đột ngột",
+      description: "Học sinh bị sốt cao 39°C trong giờ học",
+      severity: "high",
+      type: "illness",
+      location: "Lớp 12C3",
+      date: "13/12/2024",
+      time: "09:45",
+      reportedBy: "GV. Phạm Thị Dung",
+      status: "resolved",
+      affectedStudents: ["Trần Văn Đức - Lớp 12C3"],
+      actions: ["Đo nhiệt độ", "Cho uống hạ sốt", "Gọi phụ huynh đón"],
+      notes: "Học sinh đã được đưa về nhà và khỏi bệnh",
+    },
+    {
+      id: "4",
+      title: "Tai nạn nhỏ trong phòng thí nghiệm",
+      description: "Học sinh làm đổ hóa chất, không có thương tích",
+      severity: "low",
+      type: "accident",
+      location: "Phòng thí nghiệm Hóa học",
+      date: "12/12/2024",
+      time: "15:20",
+      reportedBy: "GV. Lý Văn Em",
+      status: "closed",
+      affectedStudents: ["Võ Thị Phương - Lớp 11A3"],
+      actions: [
+        "Dọn dẹp hóa chất",
+        "Thông báo cho phụ huynh",
+        "Cập nhật quy tắc an toàn",
+      ],
+      notes: "Sự cố đã được xử lý an toàn",
+    },
+  ];
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case "low":
+        return MedicalColors.success;
+      case "medium":
+        return MedicalColors.warning;
+      case "high":
+        return MedicalColors.error;
+      case "critical":
+        return "#8B0000";
+      default:
+        return MedicalColors.textSecondary;
     }
-    setLoading(false);
   };
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  useEffect(() => {
-    const fetchStudents = async () => {
-      const querySnapshot = await getDocs(collection(db, "students"));
-      const data = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setStudents(data);
-    };
-    fetchStudents();
-  }, []);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchEvents();
-    setRefreshing(false);
+  const getSeverityText = (severity: string) => {
+    switch (severity) {
+      case "low":
+        return "Nhẹ";
+      case "medium":
+        return "Trung bình";
+      case "high":
+        return "Nghiêm trọng";
+      case "critical":
+        return "Khẩn cấp";
+      default:
+        return "Không xác định";
+    }
   };
 
-  const openAddModal = () => {
-    setEditId(null);
-    setForm(emptyEvent);
-    setModalVisible(true);
+  const getTypeText = (type: string) => {
+    switch (type) {
+      case "injury":
+        return "Chấn thương";
+      case "illness":
+        return "Bệnh tật";
+      case "allergy":
+        return "Dị ứng";
+      case "accident":
+        return "Tai nạn";
+      case "other":
+        return "Khác";
+      default:
+        return "Không xác định";
+    }
   };
 
-  const openEditModal = (event: any) => {
-    setEditId(event.id);
-    setForm({
-      ...event,
-      eventTime: event.eventTime?.seconds
-        ? new Date(event.eventTime.seconds * 1000).toISOString().slice(0, 16)
-        : "",
-    });
-    setModalVisible(true);
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "reported":
+        return MedicalColors.warning;
+      case "investigating":
+        return MedicalColors.primary;
+      case "resolved":
+        return MedicalColors.success;
+      case "closed":
+        return MedicalColors.textMuted;
+      default:
+        return MedicalColors.textSecondary;
+    }
   };
 
-  const handleDelete = (id: string) => {
-    Alert.alert("Xác nhận xóa", "Bạn có chắc chắn muốn xóa sự kiện này?", [
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "reported":
+        return "Đã báo cáo";
+      case "investigating":
+        return "Đang điều tra";
+      case "resolved":
+        return "Đã giải quyết";
+      case "closed":
+        return "Đã đóng";
+      default:
+        return "Không xác định";
+    }
+  };
+
+  const getFilteredEvents = () => {
+    switch (activeFilter) {
+      case "recent":
+        return medicalEvents.filter(
+          (event) =>
+            new Date(event.date.split("/").reverse().join("-")) >
+            new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+        );
+      case "critical":
+        return medicalEvents.filter(
+          (event) => event.severity === "high" || event.severity === "critical"
+        );
+      default:
+        return medicalEvents;
+    }
+  };
+
+  const openEventDetail = (event: MedicalEvent) => {
+    setSelectedEvent(event);
+    setShowDetailModal(true);
+  };
+
+  const handleCreateEvent = () => {
+    if (!formData.title.trim() || !formData.description.trim()) {
+      Alert.alert("Lỗi", "Vui lòng điền đầy đủ thông tin bắt buộc");
+      return;
+    }
+
+    Alert.alert("Xác nhận", "Bạn có chắc chắn muốn tạo báo cáo sự cố này?", [
       { text: "Hủy", style: "cancel" },
       {
-        text: "Xóa",
-        style: "destructive",
-        onPress: async () => {
-          await deleteMedicalEvent(id);
-          fetchEvents();
+        text: "Tạo báo cáo",
+        onPress: () => {
+          Alert.alert("Thành công", "Đã tạo báo cáo sự cố thành công");
+          setShowCreateModal(false);
+          setFormData({
+            title: "",
+            description: "",
+            severity: "medium",
+            type: "injury",
+            location: "",
+            affectedStudents: "",
+            notes: "",
+          });
         },
       },
     ]);
   };
 
-  const handleSubmit = async () => {
-    setFormLoading(true);
-    try {
-      let eventData = { ...form };
-      // Chuyển eventTime sang Timestamp nếu là string
-      if (form.eventTime && typeof form.eventTime === "string") {
-        eventData.eventTime = Timestamp.fromDate(new Date(form.eventTime));
-      }
-      if (editId) {
-        await updateMedicalEvent(editId, eventData);
-      } else {
-        await addMedicalEvent(eventData);
-      }
-      setModalVisible(false);
-      fetchEvents();
-    } catch (e) {}
-    setFormLoading(false);
-  };
+  const FilterButton = ({
+    title,
+    isActive,
+    onPress,
+  }: {
+    title: string;
+    isActive: boolean;
+    onPress: () => void;
+  }) => (
+    <TouchableOpacity
+      style={[styles.filterButton, isActive && styles.activeFilterButton]}
+      onPress={onPress}
+    >
+      <Text
+        style={[
+          styles.filterButtonText,
+          isActive && styles.activeFilterButtonText,
+        ]}
+      >
+        {title}
+      </Text>
+    </TouchableOpacity>
+  );
 
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={MedicalColors.primary} />
-        <Text style={styles.loadingText}>
-          Đang tải danh sách sự kiện y tế...
-        </Text>
-      </View>
-    );
-  }
+  const SeverityButton = ({
+    severity,
+    isSelected,
+    onPress,
+  }: {
+    severity: "low" | "medium" | "high" | "critical";
+    isSelected: boolean;
+    onPress: () => void;
+  }) => (
+    <TouchableOpacity
+      style={[
+        styles.severityButton,
+        { borderColor: getSeverityColor(severity) },
+        isSelected && { backgroundColor: getSeverityColor(severity) + "20" },
+      ]}
+      onPress={onPress}
+    >
+      <Text
+        style={[
+          styles.severityButtonText,
+          { color: getSeverityColor(severity) },
+          isSelected && { fontWeight: "bold" },
+        ]}
+      >
+        {getSeverityText(severity)}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  const TypeButton = ({
+    type,
+    isSelected,
+    onPress,
+  }: {
+    type: "injury" | "illness" | "allergy" | "accident" | "other";
+    isSelected: boolean;
+    onPress: () => void;
+  }) => (
+    <TouchableOpacity
+      style={[
+        styles.typeButton,
+        isSelected && { backgroundColor: MedicalColors.primary + "20" },
+      ]}
+      onPress={onPress}
+    >
+      <Text
+        style={[
+          styles.typeButtonText,
+          isSelected && { color: MedicalColors.primary, fontWeight: "bold" },
+        ]}
+      >
+        {getTypeText(type)}
+      </Text>
+    </TouchableOpacity>
+  );
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>
-        {MedicalIcons.alert} Danh sách sự kiện y tế
-      </Text>
-      <FlatList
-        data={events}
-        keyExtractor={(item) => item.id}
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-        ListEmptyComponent={
-          <View style={styles.centered}>
-            <Text style={styles.emptyText}>
-              Chưa có sự kiện y tế nào được khai báo.
-            </Text>
-            <TouchableOpacity style={styles.reloadButton} onPress={fetchEvents}>
-              <Text style={styles.reloadButtonText}>🔄 Tải lại</Text>
-            </TouchableOpacity>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.eventType}>{item.eventType}</Text>
-              <Text style={styles.eventTime}>
-                {item.eventTime
-                  ? new Date(item.eventTime.seconds * 1000).toLocaleString()
-                  : "-"}
-              </Text>
-            </View>
-            <View style={styles.cardBody}>
-              <Text style={styles.info}>
-                <Text style={styles.label}>Mô tả:</Text> {item.description}
-              </Text>
-              <Text style={styles.info}>
-                <Text style={styles.label}>Học sinh:</Text> {item.fullName} (
-                {item.studentId})
-              </Text>
-              <Text style={styles.info}>
-                <Text style={styles.label}>Lớp:</Text> {item.grade}
-              </Text>
-              <Text style={styles.info}>
-                <Text style={styles.label}>Người báo cáo:</Text>{" "}
-                {item.reportedBy}
-              </Text>
-              <Text style={styles.info}>
-                <Text style={styles.label}>Ghi chú:</Text> {item.notes}
-              </Text>
-            </View>
-            <View style={styles.cardActions}>
-              <TouchableOpacity
-                style={styles.editBtn}
-                onPress={() => openEditModal(item)}
-              >
-                <Text style={styles.editBtnText}>✏️ Sửa</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.deleteBtn}
-                onPress={() => handleDelete(item.id)}
-              >
-                <Text style={styles.deleteBtnText}>🗑️ Xóa</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-        contentContainerStyle={{ paddingBottom: 80 }}
+      {/* Header */}
+      <CustomHeader
+        title="Báo cáo sự cố"
+        subtitle="Quản lý và theo dõi sự cố y tế"
+        icon={<Text style={{ fontSize: 14 }}>{MedicalIcons.alert}</Text>}
+        showBack={true}
+        onBack={() => router.back()}
       />
-      {/* Floating Action Button */}
-      <TouchableOpacity style={styles.fab} onPress={openAddModal}>
-        <Text style={styles.fabIcon}>＋</Text>
-      </TouchableOpacity>
-      {/* Modal Form */}
+
+      {/* Filter Buttons */}
+      <View style={[styles.filterContainer, { marginTop: 8 }]}>
+        <FilterButton
+          title="Tất cả"
+          isActive={activeFilter === "all"}
+          onPress={() => setActiveFilter("all")}
+        />
+        <FilterButton
+          title="Gần đây"
+          isActive={activeFilter === "recent"}
+          onPress={() => setActiveFilter("recent")}
+        />
+        <FilterButton
+          title="Nghiêm trọng"
+          isActive={activeFilter === "critical"}
+          onPress={() => setActiveFilter("critical")}
+        />
+      </View>
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Quick Stats */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>{medicalEvents.length}</Text>
+            <Text style={styles.statLabel}>Tổng sự cố</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>
+              {
+                medicalEvents.filter(
+                  (e) => e.severity === "high" || e.severity === "critical"
+                ).length
+              }
+            </Text>
+            <Text style={styles.statLabel}>Nghiêm trọng</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statNumber}>
+              {
+                medicalEvents.filter(
+                  (e) => e.status === "resolved" || e.status === "closed"
+                ).length
+              }
+            </Text>
+            <Text style={styles.statLabel}>Đã giải quyết</Text>
+          </View>
+        </View>
+
+        {/* Events List */}
+        <View style={styles.eventsContainer}>
+          <Text style={styles.sectionTitle}>📋 Danh sách sự cố</Text>
+          {getFilteredEvents().map((event) => (
+            <TouchableOpacity
+              key={event.id}
+              style={styles.eventCard}
+              onPress={() => openEventDetail(event)}
+            >
+              <View style={styles.eventHeader}>
+                <View style={styles.eventInfo}>
+                  <Text style={styles.eventTitle}>{event.title}</Text>
+                  <Text style={styles.eventDescription}>
+                    {event.description}
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.severityBadge,
+                    {
+                      backgroundColor: getSeverityColor(event.severity) + "20",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.severityText,
+                      { color: getSeverityColor(event.severity) },
+                    ]}
+                  >
+                    {getSeverityText(event.severity)}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.eventDetails}>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Loại:</Text>
+                  <Text style={styles.detailValue}>
+                    {getTypeText(event.type)}
+                  </Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Địa điểm:</Text>
+                  <Text style={styles.detailValue}>{event.location}</Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Thời gian:</Text>
+                  <Text style={styles.detailValue}>
+                    {event.date} - {event.time}
+                  </Text>
+                </View>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Báo cáo bởi:</Text>
+                  <Text style={styles.detailValue}>{event.reportedBy}</Text>
+                </View>
+              </View>
+
+              <View style={styles.eventFooter}>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    { backgroundColor: getStatusColor(event.status) + "20" },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusText,
+                      { color: getStatusColor(event.status) },
+                    ]}
+                  >
+                    {getStatusText(event.status)}
+                  </Text>
+                </View>
+                <Text style={styles.viewDetailText}>Xem chi tiết →</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
+
+      {/* Create Event Button */}
+      {(userRole === "medical_staff" || userRole === "administrator") && (
+        <TouchableOpacity
+          style={styles.createButton}
+          onPress={() => setShowCreateModal(true)}
+        >
+          <Text style={styles.createButtonIcon}>+</Text>
+          <Text style={styles.createButtonText}>Báo cáo sự cố mới</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Create Event Modal */}
       <Modal
-        visible={modalVisible}
+        visible={showCreateModal}
         animationType="slide"
-        transparent
-        onRequestClose={() => setModalVisible(false)}
+        transparent={true}
+        onRequestClose={() => setShowCreateModal(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {editId ? "Sửa sự kiện" : "Khai báo sự kiện mới"}
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Loại sự kiện (VD: Chấn thương, Tai nạn, ... )"
-              value={form.eventType}
-              onChangeText={(t) =>
-                setForm((f: any) => ({ ...f, eventType: t }))
-              }
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Mô tả sự kiện"
-              value={form.description}
-              onChangeText={(t) =>
-                setForm((f: any) => ({ ...f, description: t }))
-              }
-            />
-            {Platform.OS === "web" ? (
-              <input
-                type="datetime-local"
-                className="rnweb-input"
-                style={{
-                  ...styles.input,
-                  padding: 12,
-                  fontSize: 16,
-                  borderRadius: 10,
-                  borderWidth: 1.5,
-                  borderColor: MedicalColors.inputBorder,
-                  marginBottom: 12,
-                  width: "100%",
-                }}
-                value={form.eventTime ? form.eventTime.slice(0, 16) : ""}
-                onChange={(e) =>
-                  setForm((f: any) => ({
-                    ...f,
-                    eventTime: e.target.value,
-                  }))
-                }
-              />
-            ) : (
-              <>
-                <TouchableOpacity
-                  onPress={() => setShowDatePicker(true)}
-                  style={[styles.input, { justifyContent: "center" }]}
-                >
-                  <Text style={{ color: form.eventTime ? "#000" : "#888" }}>
-                    {form.eventTime
-                      ? new Date(form.eventTime).toLocaleString()
-                      : "Chọn thời gian sự kiện"}
-                  </Text>
-                </TouchableOpacity>
-                {showDatePicker && (
-                  <DateTimePicker
-                    value={
-                      form.eventTime ? new Date(form.eventTime) : new Date()
-                    }
-                    mode="datetime"
-                    display="default"
-                    onChange={(event, selectedDate) => {
-                      setShowDatePicker(false);
-                      if (selectedDate) {
-                        setForm((f: any) => ({
-                          ...f,
-                          eventTime: selectedDate.toISOString(),
-                        }));
-                      }
-                    }}
-                  />
-                )}
-              </>
-            )}
-            <Picker
-              selectedValue={form.studentId}
-              onValueChange={(studentId) => {
-                const selected = students.find((s) => s.id === studentId);
-                setForm((f: any) => ({
-                  ...f,
-                  studentId,
-                  fullName: selected?.fullName || "",
-                  grade: selected?.grade || "",
-                }));
-              }}
-              style={styles.input}
-            >
-              <Picker.Item label="Chọn mã học sinh" value="" />
-              {students.map((student) => (
-                <Picker.Item
-                  key={student.id}
-                  label={student.id}
-                  value={student.id}
-                />
-              ))}
-            </Picker>
-            <TextInput
-              style={styles.input}
-              placeholder="Họ tên học sinh"
-              value={form.fullName}
-              editable={false}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Lớp"
-              value={form.grade}
-              editable={false}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Người báo cáo"
-              value={form.reportedBy}
-              onChangeText={(t) =>
-                setForm((f: any) => ({ ...f, reportedBy: t }))
-              }
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Ghi chú"
-              value={form.notes}
-              onChangeText={(t) => setForm((f: any) => ({ ...f, notes: t }))}
-            />
-            <View style={styles.modalActions}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Báo cáo sự cố mới</Text>
               <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => setModalVisible(false)}
+                style={styles.closeButton}
+                onPress={() => setShowCreateModal(false)}
               >
-                <Text style={styles.cancelBtnText}>Hủy</Text>
+                <Text style={styles.closeButtonText}>×</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody}>
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Tiêu đề sự cố *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.title}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, title: text })
+                  }
+                  placeholder="Nhập tiêu đề sự cố"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Mô tả chi tiết *</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={formData.description}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, description: text })
+                  }
+                  placeholder="Mô tả chi tiết sự cố..."
+                  multiline
+                  numberOfLines={4}
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Mức độ nghiêm trọng</Text>
+                <View style={styles.severityContainer}>
+                  {(["low", "medium", "high", "critical"] as const).map(
+                    (severity) => (
+                      <SeverityButton
+                        key={severity}
+                        severity={severity}
+                        isSelected={formData.severity === severity}
+                        onPress={() => setFormData({ ...formData, severity })}
+                      />
+                    )
+                  )}
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Loại sự cố</Text>
+                <View style={styles.typeContainer}>
+                  {(
+                    [
+                      "injury",
+                      "illness",
+                      "allergy",
+                      "accident",
+                      "other",
+                    ] as const
+                  ).map((type) => (
+                    <TypeButton
+                      key={type}
+                      type={type}
+                      isSelected={formData.type === type}
+                      onPress={() => setFormData({ ...formData, type })}
+                    />
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Địa điểm xảy ra</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.location}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, location: text })
+                  }
+                  placeholder="Nhập địa điểm"
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Học sinh bị ảnh hưởng</Text>
+                <TextInput
+                  style={styles.input}
+                  value={formData.affectedStudents}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, affectedStudents: text })
+                  }
+                  placeholder="Tên học sinh, lớp..."
+                />
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Ghi chú bổ sung</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  value={formData.notes}
+                  onChangeText={(text) =>
+                    setFormData({ ...formData, notes: text })
+                  }
+                  placeholder="Thông tin bổ sung..."
+                  multiline
+                  numberOfLines={3}
+                />
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowCreateModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Hủy</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.saveBtn}
-                onPress={handleSubmit}
-                disabled={formLoading}
+                style={styles.confirmButton}
+                onPress={handleCreateEvent}
               >
-                <Text style={styles.saveBtnText}>
-                  {formLoading ? "Đang lưu..." : "Lưu"}
+                <Text style={styles.confirmButtonText}>Tạo báo cáo</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Event Detail Modal */}
+      <Modal
+        visible={showDetailModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowDetailModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Chi tiết sự cố</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowDetailModal(false)}
+              >
+                <Text style={styles.closeButtonText}>×</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody}>
+              {selectedEvent && (
+                <>
+                  <Text style={styles.detailTitle}>{selectedEvent.title}</Text>
+
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailSectionTitle}>
+                      Thông tin cơ bản
+                    </Text>
+                    <Text style={styles.detailText}>
+                      {selectedEvent.description}
+                    </Text>
+                  </View>
+
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailSectionTitle}>
+                      Chi tiết sự cố
+                    </Text>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Mức độ:</Text>
+                      <Text
+                        style={[
+                          styles.detailValue,
+                          { color: getSeverityColor(selectedEvent.severity) },
+                        ]}
+                      >
+                        {getSeverityText(selectedEvent.severity)}
+                      </Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Loại:</Text>
+                      <Text style={styles.detailValue}>
+                        {getTypeText(selectedEvent.type)}
+                      </Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Địa điểm:</Text>
+                      <Text style={styles.detailValue}>
+                        {selectedEvent.location}
+                      </Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Thời gian:</Text>
+                      <Text style={styles.detailValue}>
+                        {selectedEvent.date} - {selectedEvent.time}
+                      </Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Báo cáo bởi:</Text>
+                      <Text style={styles.detailValue}>
+                        {selectedEvent.reportedBy}
+                      </Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Trạng thái:</Text>
+                      <Text
+                        style={[
+                          styles.detailValue,
+                          { color: getStatusColor(selectedEvent.status) },
+                        ]}
+                      >
+                        {getStatusText(selectedEvent.status)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailSectionTitle}>
+                      Học sinh bị ảnh hưởng
+                    </Text>
+                    {selectedEvent.affectedStudents.map((student, index) => (
+                      <Text key={index} style={styles.studentItem}>
+                        • {student}
+                      </Text>
+                    ))}
+                  </View>
+
+                  <View style={styles.detailSection}>
+                    <Text style={styles.detailSectionTitle}>
+                      Hành động đã thực hiện
+                    </Text>
+                    {selectedEvent.actions.map((action, index) => (
+                      <Text key={index} style={styles.actionItem}>
+                        • {action}
+                      </Text>
+                    ))}
+                  </View>
+
+                  {selectedEvent.notes && (
+                    <View style={styles.detailSection}>
+                      <Text style={styles.detailSectionTitle}>Ghi chú</Text>
+                      <Text style={styles.detailText}>
+                        {selectedEvent.notes}
+                      </Text>
+                    </View>
+                  )}
+                </>
+              )}
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowDetailModal(false)}
+              >
+                <Text style={styles.cancelButtonText}>Đóng</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.confirmButton}
+                onPress={() => {
+                  Alert.alert(
+                    "Cập nhật trạng thái",
+                    "Trạng thái sự cố đã được cập nhật"
+                  );
+                  setShowDetailModal(false);
+                }}
+              >
+                <Text style={styles.confirmButtonText}>
+                  Cập nhật trạng thái
                 </Text>
               </TouchableOpacity>
             </View>
@@ -370,195 +786,358 @@ export default function EventReport() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: MedicalColors.backgroundSecondary,
-    padding: 16,
+    backgroundColor: MedicalColors.background,
+  },
+  header: {
+    backgroundColor: MedicalColors.primary,
+    paddingTop: 60,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    alignItems: "center",
+  },
+  headerIcon: {
+    fontSize: 32,
+    marginBottom: 10,
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "bold",
-    color: MedicalColors.primary,
-    marginBottom: 18,
-    textAlign: "center",
+    color: "white",
+    marginBottom: 5,
   },
-  card: {
-    backgroundColor: MedicalColors.backgroundCard,
-    borderRadius: 14,
-    padding: 18,
-    marginBottom: 16,
+  subtitle: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.8)",
+  },
+  filterContainer: {
+    flexDirection: "row",
+    backgroundColor: "white",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: MedicalColors.border,
+  },
+  filterButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: "center",
+    borderRadius: 8,
+    marginHorizontal: 5,
+  },
+  activeFilterButton: {
+    backgroundColor: MedicalColors.primary + "20",
+  },
+  filterButtonText: {
+    fontSize: 14,
+    color: MedicalColors.textSecondary,
+    fontWeight: "500",
+  },
+  activeFilterButtonText: {
+    color: MedicalColors.primary,
+    fontWeight: "bold",
+  },
+  content: {
+    flex: 1,
+  },
+  statsContainer: {
+    flexDirection: "row",
+    padding: 20,
+    gap: 15,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 15,
+    alignItems: "center",
     shadowColor: MedicalColors.shadowLight,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  cardHeader: {
+  statNumber: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: MedicalColors.primary,
+    marginBottom: 5,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: MedicalColors.textSecondary,
+    textAlign: "center",
+  },
+  eventsContainer: {
+    padding: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: MedicalColors.textPrimary,
+    marginBottom: 15,
+  },
+  eventCard: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 15,
+    shadowColor: MedicalColors.shadowLight,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  eventHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 10,
+  },
+  eventInfo: {
+    flex: 1,
+    marginRight: 10,
+  },
+  eventTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: MedicalColors.textPrimary,
+    marginBottom: 5,
+  },
+  eventDescription: {
+    fontSize: 14,
+    color: MedicalColors.textSecondary,
+    lineHeight: 20,
+  },
+  severityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  severityText: {
+    fontSize: 10,
+    fontWeight: "500",
+  },
+  eventDetails: {
+    marginBottom: 10,
+  },
+  detailRow: {
+    flexDirection: "row",
+    marginBottom: 5,
+  },
+  detailLabel: {
+    fontSize: 12,
+    color: MedicalColors.textSecondary,
+    width: 80,
+  },
+  detailValue: {
+    fontSize: 12,
+    color: MedicalColors.textPrimary,
+    flex: 1,
+  },
+  eventFooter: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
   },
-  eventType: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: MedicalColors.textPrimary,
-    flex: 1,
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
-  eventTime: {
-    fontSize: 14,
-    color: MedicalColors.textMuted,
-    marginLeft: 8,
+  statusText: {
+    fontSize: 10,
+    fontWeight: "500",
   },
-  cardBody: {
-    marginTop: 4,
+  viewDetailText: {
+    fontSize: 12,
+    color: MedicalColors.primary,
+    fontWeight: "500",
   },
-  info: {
-    fontSize: 15,
-    color: MedicalColors.textSecondary,
-    marginBottom: 2,
-  },
-  label: {
-    fontWeight: "600",
-    color: MedicalColors.textPrimary,
-  },
-  cardActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 10,
-    gap: 8,
-  },
-  editBtn: {
-    backgroundColor: MedicalColors.info,
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 6,
-  },
-  editBtnText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  deleteBtn: {
-    backgroundColor: MedicalColors.error,
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  deleteBtnText: {
-    color: "#fff",
-    fontWeight: "bold",
-  },
-  fab: {
+  createButton: {
     position: "absolute",
-    right: 24,
-    bottom: 32,
+    right: 20,
+    bottom: 20,
     backgroundColor: MedicalColors.primary,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    borderRadius: 25,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     shadowColor: MedicalColors.shadowMedium,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
   },
-  fabIcon: {
-    color: "#fff",
-    fontSize: 32,
+  createButtonIcon: {
+    fontSize: 20,
+    color: "white",
     fontWeight: "bold",
+    marginRight: 8,
   },
-  centered: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: MedicalColors.backgroundSecondary,
-    padding: 24,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: MedicalColors.textSecondary,
-  },
-  emptyText: {
-    fontSize: 17,
-    color: MedicalColors.textMuted,
-    marginBottom: 18,
-    textAlign: "center",
-  },
-  reloadButton: {
-    backgroundColor: MedicalColors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-  },
-  reloadButtonText: {
-    color: "#fff",
+  createButtonText: {
+    fontSize: 14,
+    color: "white",
     fontWeight: "bold",
-    fontSize: 15,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.2)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
   },
   modalContent: {
-    backgroundColor: "#fff",
+    backgroundColor: "white",
     borderRadius: 16,
-    padding: 24,
-    width: "90%",
-    maxWidth: 400,
-    shadowColor: MedicalColors.shadowMedium,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 10,
+    width: width - 40,
+    maxHeight: "90%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: MedicalColors.border,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "bold",
-    color: MedicalColors.primary,
-    marginBottom: 18,
-    textAlign: "center",
-  },
-  input: {
-    borderWidth: 1.5,
-    borderColor: MedicalColors.inputBorder,
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 12,
-    backgroundColor: MedicalColors.inputBackground,
     color: MedicalColors.textPrimary,
   },
-  modalActions: {
+  closeButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: MedicalColors.border,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  closeButtonText: {
+    fontSize: 20,
+    color: MedicalColors.textSecondary,
+  },
+  modalBody: {
+    padding: 20,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: MedicalColors.textPrimary,
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: MedicalColors.border,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    backgroundColor: MedicalColors.inputBackground,
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: "top",
+  },
+  severityContainer: {
     flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: 10,
+    flexWrap: "wrap",
     gap: 10,
   },
-  cancelBtn: {
-    backgroundColor: MedicalColors.textMuted,
+  severityButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    marginRight: 8,
+    borderWidth: 1,
+    minWidth: 70,
+    alignItems: "center",
   },
-  cancelBtnText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 15,
+  severityButtonText: {
+    fontSize: 12,
+    fontWeight: "500",
   },
-  saveBtn: {
+  typeContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  typeButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: MedicalColors.border,
+    minWidth: 70,
+    alignItems: "center",
+  },
+  typeButtonText: {
+    fontSize: 12,
+    color: MedicalColors.textSecondary,
+  },
+  modalFooter: {
+    flexDirection: "row",
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: MedicalColors.border,
+    gap: 15,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: MedicalColors.border,
+    alignItems: "center",
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    color: MedicalColors.textSecondary,
+    fontWeight: "500",
+  },
+  confirmButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
     backgroundColor: MedicalColors.primary,
-    borderRadius: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    alignItems: "center",
   },
-  saveBtnText: {
-    color: "#fff",
+  confirmButtonText: {
+    fontSize: 16,
+    color: "white",
     fontWeight: "bold",
-    fontSize: 15,
+  },
+  detailTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: MedicalColors.textPrimary,
+    marginBottom: 20,
+  },
+  detailSection: {
+    marginBottom: 20,
+  },
+  detailSectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: MedicalColors.textPrimary,
+    marginBottom: 10,
+  },
+  detailText: {
+    fontSize: 14,
+    color: MedicalColors.textSecondary,
+    lineHeight: 20,
+  },
+  studentItem: {
+    fontSize: 14,
+    color: MedicalColors.textSecondary,
+    marginBottom: 5,
+    paddingLeft: 10,
+  },
+  actionItem: {
+    fontSize: 14,
+    color: MedicalColors.textSecondary,
+    marginBottom: 5,
+    paddingLeft: 10,
   },
 });

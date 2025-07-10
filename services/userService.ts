@@ -5,6 +5,7 @@ import {
   getDoc,
   getDocs,
   query,
+  serverTimestamp,
   setDoc,
   Timestamp,
   updateDoc,
@@ -19,6 +20,7 @@ export enum UserStatus {
   SUSPENDED = "suspended", // Bị tạm dừng
   ACTIVE = "active", // Đang hoạt động (đã đăng nhập)
   INACTIVE = "inactive", // Không hoạt động
+  APPROVED = "approved", // Đã được phê duyệt
 }
 
 // User Roles
@@ -45,6 +47,15 @@ export interface UserProfile {
   createdAt: Timestamp;
   updatedAt: Timestamp;
   lastLoginAt?: Timestamp;
+  mustChangePassword?: boolean; // Yêu cầu đổi mật khẩu
+  emailVerified?: boolean; // Trạng thái xác thực email
+  // Thêm các trường mới
+  position?: string; // Chức vụ
+  address?: string; // Địa chỉ
+  emergencyContact?: string; // Liên hệ khẩn cấp
+  emergencyPhone?: string; // SĐT khẩn cấp
+  bio?: string; // Tiểu sử
+  phone?: string; // Alias cho phoneNumber
 }
 
 // Create user profile
@@ -135,6 +146,25 @@ export const updateLastLogin = async (uid: string): Promise<void> => {
   }
 };
 
+// Update user's mustChangePassword status
+export const updateMustChangePassword = async (
+  uid: string,
+  mustChange: boolean = false
+): Promise<void> => {
+  try {
+    const userRef = doc(db, "users", uid);
+    await updateDoc(userRef, {
+      mustChangePassword: mustChange,
+      updatedAt: serverTimestamp(),
+    });
+
+    console.log(`✅ Updated mustChangePassword for user ${uid}: ${mustChange}`);
+  } catch (error) {
+    console.error("Error updating mustChangePassword:", error);
+    throw new Error("Không thể cập nhật trạng thái đổi mật khẩu");
+  }
+};
+
 // Check if user can access the system
 export const canUserAccess = (
   userProfile: UserProfile
@@ -145,6 +175,15 @@ export const canUserAccess = (
 } => {
   // Kiểm tra email verification
   // Note: Cần check từ Firebase Auth user object
+
+  // Kiểm tra yêu cầu đổi mật khẩu (tạm thời tắt để admin có thể đăng nhập)
+  // if (userProfile.mustChangePassword) {
+  //   return {
+  //     canAccess: false,
+  //     reason: "Bạn cần đổi mật khẩu trước khi sử dụng hệ thống",
+  //     redirectTo: "/ChangePassword",
+  //   };
+  // }
 
   switch (userProfile.status) {
     case UserStatus.PENDING:

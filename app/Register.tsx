@@ -1,37 +1,35 @@
-import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { router } from "expo-router";
+import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from 'react-native';
-import { ErrorMessage, SuccessMessage } from '../components/ErrorMessage';
-import { MedicalColors, MedicalIcons, RoleColors } from '../constants/Colors';
-import { registerWithRetry } from '../services/authService';
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import CustomHeader from "../components/CustomHeader";
+import { ErrorMessage, SuccessMessage } from "../components/ErrorMessage";
+import { MedicalColors, MedicalIcons, RoleColors } from "../constants/Colors";
+import { registerWithRetry } from "../services/authService";
 
-const { width } = Dimensions.get('window');
-
-type UserRole = 'parent' | 'medical_staff';
+type UserRole = "parent" | "medical_staff";
 
 export default function Register() {
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [studentId, setStudentId] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [role, setRole] = useState<UserRole>('parent');
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [studentId, setStudentId] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [role, setRole] = useState<UserRole>("parent");
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Real-time validation
   useEffect(() => {
@@ -39,47 +37,59 @@ export default function Register() {
 
     // Full name validation
     if (fullName && (fullName.length < 2 || fullName.length > 50)) {
-      newErrors.fullName = 'Họ tên phải từ 2-50 ký tự';
+      newErrors.fullName = "Họ tên phải từ 2-50 ký tự";
     }
 
     // Email validation
     if (email && !isValidEmail(email)) {
-      newErrors.email = 'Định dạng email không hợp lệ';
+      newErrors.email = "Định dạng email không hợp lệ";
     }
 
     // Password validation
     if (password) {
       if (password.length < 6) {
-        newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự';
+        newErrors.password = "Mật khẩu phải có ít nhất 6 ký tự";
       } else if (password.length < 8) {
         // Additional strength checking for medical app
         if (!/(?=.*[a-z])/.test(password)) {
-          newErrors.password = 'Mật khẩu nên chứa chữ thường';
+          newErrors.password = "Mật khẩu nên chứa chữ thường";
         } else if (!/(?=.*[A-Z])/.test(password)) {
-          newErrors.password = 'Mật khẩu nên chứa chữ hoa';
+          newErrors.password = "Mật khẩu nên chứa chữ hoa";
         } else if (!/(?=.*\d)/.test(password)) {
-          newErrors.password = 'Mật khẩu nên chứa số';
+          newErrors.password = "Mật khẩu nên chứa số";
         }
       }
     }
 
     // Confirm password validation
     if (confirmPassword && confirmPassword !== password) {
-      newErrors.confirmPassword = 'Mật khẩu xác nhận không khớp';
+      newErrors.confirmPassword = "Mật khẩu xác nhận không khớp";
     }
 
     // Student ID validation (for parents)
-    if (role === 'parent' && studentId && (studentId.length < 6 || studentId.length > 20)) {
-      newErrors.studentId = 'Mã học sinh phải từ 6-20 ký tự';
+    if (
+      role === "parent" &&
+      studentId &&
+      (studentId.length < 6 || studentId.length > 20)
+    ) {
+      newErrors.studentId = "Mã học sinh phải từ 6-20 ký tự";
     }
 
     // Phone number validation
     if (phoneNumber && !isValidPhoneNumber(phoneNumber)) {
-      newErrors.phoneNumber = 'Số điện thoại không hợp lệ';
+      newErrors.phoneNumber = "Số điện thoại không hợp lệ";
     }
 
     setErrors(newErrors);
-  }, [fullName, email, password, confirmPassword, studentId, phoneNumber, role]);
+  }, [
+    fullName,
+    email,
+    password,
+    confirmPassword,
+    studentId,
+    phoneNumber,
+    role,
+  ]);
 
   const isValidEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -88,12 +98,15 @@ export default function Register() {
 
   const isValidPhoneNumber = (phone: string) => {
     const phoneRegex = /^[0-9]{10,11}$/;
-    return phoneRegex.test(phone.replace(/[^0-9]/g, ''));
+    return phoneRegex.test(phone.replace(/[^0-9]/g, ""));
   };
 
-  const getPasswordStrength = (password: string): { strength: 'Yếu' | 'Trung bình' | 'Mạnh'; color: string } => {
-    if (password.length < 6) return { strength: 'Yếu', color: MedicalColors.error };
-    
+  const getPasswordStrength = (
+    password: string
+  ): { strength: "Yếu" | "Trung bình" | "Mạnh"; color: string } => {
+    if (password.length < 6)
+      return { strength: "Yếu", color: MedicalColors.error };
+
     let score = 0;
     if (password.length >= 8) score++;
     if (/(?=.*[a-z])/.test(password)) score++;
@@ -101,36 +114,45 @@ export default function Register() {
     if (/(?=.*\d)/.test(password)) score++;
     if (/(?=.*[!@#$%^&*])/.test(password)) score++;
 
-    if (score >= 4) return { strength: 'Mạnh', color: MedicalColors.success };
-    if (score >= 2) return { strength: 'Trung bình', color: MedicalColors.warning };
-    return { strength: 'Yếu', color: MedicalColors.error };
+    if (score >= 4) return { strength: "Mạnh", color: MedicalColors.success };
+    if (score >= 2)
+      return { strength: "Trung bình", color: MedicalColors.warning };
+    return { strength: "Yếu", color: MedicalColors.error };
   };
 
   const isFormValid = () => {
-    const requiredFields = [fullName, email, password, confirmPassword, phoneNumber];
-    if (role === 'parent') requiredFields.push(studentId);
-    
-    return requiredFields.every(field => field.trim() !== '') &&
-           Object.keys(errors).length === 0 &&
-           isValidEmail(email) &&
-           password.length >= 6 &&
-           password === confirmPassword;
+    const requiredFields = [
+      fullName,
+      email,
+      password,
+      confirmPassword,
+      phoneNumber,
+    ];
+    if (role === "parent") requiredFields.push(studentId);
+
+    return (
+      requiredFields.every((field) => field.trim() !== "") &&
+      Object.keys(errors).length === 0 &&
+      isValidEmail(email) &&
+      password.length >= 6 &&
+      password === confirmPassword
+    );
   };
 
   const getRoleInfo = (roleType: UserRole) => {
     switch (roleType) {
-      case 'parent':
+      case "parent":
         return {
-          title: 'Phụ huynh',
-          description: 'Theo dõi sức khỏe con em',
+          title: "Phụ huynh",
+          description: "Theo dõi sức khỏe con em",
           icon: RoleColors.parent.icon,
           color: RoleColors.parent.primary,
           background: RoleColors.parent.background,
         };
-      case 'medical_staff':
+      case "medical_staff":
         return {
-          title: 'Cán bộ Y tế',
-          description: 'Quản lý y tế học sinh',
+          title: "Cán bộ Y tế",
+          description: "Quản lý y tế học sinh",
           icon: RoleColors.medical_staff.icon,
           color: RoleColors.medical_staff.primary,
           background: RoleColors.medical_staff.background,
@@ -140,13 +162,13 @@ export default function Register() {
 
   const handleRegister = async () => {
     if (!isFormValid()) {
-      setErrorMessage('Vui lòng điền đầy đủ thông tin hợp lệ');
+      setErrorMessage("Vui lòng điền đầy đủ thông tin hợp lệ");
       return;
     }
 
     setLoading(true);
-    setErrorMessage('');
-    setSuccessMessage('');
+    setErrorMessage("");
+    setSuccessMessage("");
 
     try {
       const userData = {
@@ -154,19 +176,20 @@ export default function Register() {
         email: email.trim(),
         phoneNumber: phoneNumber.trim(),
         role,
-        ...(role === 'parent' && { studentId: studentId.trim() }),
+        ...(role === "parent" && { studentId: studentId.trim() }),
       };
 
       await registerWithRetry(email.trim(), password, userData);
-      
-      setSuccessMessage('Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.');
-      
+
+      setSuccessMessage(
+        "Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản."
+      );
+
       setTimeout(() => {
-        router.push('/EmailVerification');
+        router.push("/EmailVerification");
       }, 2000);
-      
     } catch (error: any) {
-      console.error('Registration error:', error);
+      console.error("Registration error:", error);
       setErrorMessage(error.message);
     } finally {
       setLoading(false);
@@ -176,26 +199,21 @@ export default function Register() {
   const passwordStrength = getPasswordStrength(password);
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         {/* Header Section */}
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Text style={styles.logoIcon}>{MedicalIcons.health}</Text>
-            <Text style={styles.logoText}>School Medicine</Text>
-          </View>
-          <Text style={styles.subtitle}>Tạo tài khoản mới</Text>
-          <Text style={styles.description}>
-            Tham gia hệ thống quản lý y tế trường học
-          </Text>
-        </View>
+        <CustomHeader
+          title="Đăng ký tài khoản"
+          subtitle="Tạo tài khoản mới"
+          icon={<Text style={{ fontSize: 14 }}>{MedicalIcons.profile}</Text>}
+        />
 
         {/* Registration Card */}
         <View style={styles.registrationCard}>
@@ -215,35 +233,45 @@ export default function Register() {
               💡 Tài khoản Quản trị viên được cấp bởi nhà trường
             </Text>
             <View style={styles.roleOptions}>
-              {(['parent', 'medical_staff'] as UserRole[]).map((roleType) => {
+              {(["parent", "medical_staff"] as UserRole[]).map((roleType) => {
                 const roleInfo = getRoleInfo(roleType);
                 const isSelected = role === roleType;
-                
+
                 return (
                   <TouchableOpacity
                     key={roleType}
                     style={[
                       styles.roleOption,
-                      isSelected && { 
+                      isSelected && {
                         backgroundColor: roleInfo.background,
                         borderColor: roleInfo.color,
                         borderWidth: 2,
-                      }
+                      },
                     ]}
                     onPress={() => setRole(roleType)}
                   >
                     <Text style={styles.roleOptionIcon}>{roleInfo.icon}</Text>
-                    <Text style={[
-                      styles.roleOptionTitle,
-                      isSelected && { color: roleInfo.color, fontWeight: 'bold' }
-                    ]}>
+                    <Text
+                      style={[
+                        styles.roleOptionTitle,
+                        isSelected && {
+                          color: roleInfo.color,
+                          fontWeight: "bold",
+                        },
+                      ]}
+                    >
                       {roleInfo.title}
                     </Text>
                     <Text style={styles.roleOptionDescription}>
                       {roleInfo.description}
                     </Text>
                     {isSelected && (
-                      <View style={[styles.selectedIndicator, { backgroundColor: roleInfo.color }]}>
+                      <View
+                        style={[
+                          styles.selectedIndicator,
+                          { backgroundColor: roleInfo.color },
+                        ]}
+                      >
                         <Text style={styles.selectedText}>✓</Text>
                       </View>
                     )}
@@ -255,31 +283,32 @@ export default function Register() {
 
           {/* Error Messages */}
           {errorMessage ? (
-            <ErrorMessage 
-              error={errorMessage} 
+            <ErrorMessage
+              error={errorMessage}
               type="auth"
-              onDismiss={() => setErrorMessage('')}
+              onDismiss={() => setErrorMessage("")}
             />
           ) : null}
 
           {/* Success Messages */}
           {successMessage ? (
-            <SuccessMessage 
+            <SuccessMessage
               message={successMessage}
-              onDismiss={() => setSuccessMessage('')}
+              onDismiss={() => setSuccessMessage("")}
             />
           ) : null}
 
           {/* Full Name Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>
-              {MedicalIcons.family} Họ và tên
-            </Text>
+            <Text style={styles.label}>{MedicalIcons.family} Họ và tên</Text>
             <TextInput
               style={[
                 styles.input,
                 errors.fullName && styles.inputError,
-                !errors.fullName && fullName && fullName.length >= 2 && styles.inputSuccess
+                !errors.fullName &&
+                  fullName &&
+                  fullName.length >= 2 &&
+                  styles.inputSuccess,
               ]}
               placeholder="Nhập họ và tên đầy đủ"
               placeholderTextColor={MedicalColors.textMuted}
@@ -295,14 +324,15 @@ export default function Register() {
 
           {/* Email Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>
-              📧 Email
-            </Text>
+            <Text style={styles.label}>📧 Email</Text>
             <TextInput
               style={[
                 styles.input,
                 errors.email && styles.inputError,
-                !errors.email && email && isValidEmail(email) && styles.inputSuccess
+                !errors.email &&
+                  email &&
+                  isValidEmail(email) &&
+                  styles.inputSuccess,
               ]}
               placeholder="Nhập địa chỉ email"
               placeholderTextColor={MedicalColors.textMuted}
@@ -319,14 +349,15 @@ export default function Register() {
 
           {/* Phone Number Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>
-              📱 Số điện thoại
-            </Text>
+            <Text style={styles.label}>📱 Số điện thoại</Text>
             <TextInput
               style={[
                 styles.input,
                 errors.phoneNumber && styles.inputError,
-                !errors.phoneNumber && phoneNumber && isValidPhoneNumber(phoneNumber) && styles.inputSuccess
+                !errors.phoneNumber &&
+                  phoneNumber &&
+                  isValidPhoneNumber(phoneNumber) &&
+                  styles.inputSuccess,
               ]}
               placeholder="Nhập số điện thoại"
               placeholderTextColor={MedicalColors.textMuted}
@@ -340,7 +371,7 @@ export default function Register() {
           </View>
 
           {/* Student ID Input (for parents only) */}
-          {role === 'parent' && (
+          {role === "parent" && (
             <View style={styles.inputContainer}>
               <Text style={styles.label}>
                 {MedicalIcons.student} Mã học sinh
@@ -349,7 +380,10 @@ export default function Register() {
                 style={[
                   styles.input,
                   errors.studentId && styles.inputError,
-                  !errors.studentId && studentId && studentId.length >= 6 && styles.inputSuccess
+                  !errors.studentId &&
+                    studentId &&
+                    studentId.length >= 6 &&
+                    styles.inputSuccess,
                 ]}
                 placeholder="Nhập mã học sinh"
                 placeholderTextColor={MedicalColors.textMuted}
@@ -368,14 +402,15 @@ export default function Register() {
 
           {/* Password Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>
-              🔒 Mật khẩu
-            </Text>
+            <Text style={styles.label}>🔒 Mật khẩu</Text>
             <TextInput
               style={[
                 styles.input,
                 errors.password && styles.inputError,
-                !errors.password && password && password.length >= 6 && styles.inputSuccess
+                !errors.password &&
+                  password &&
+                  password.length >= 6 &&
+                  styles.inputSuccess,
               ]}
               placeholder="Nhập mật khẩu"
               placeholderTextColor={MedicalColors.textMuted}
@@ -390,7 +425,12 @@ export default function Register() {
             )}
             {password && (
               <View style={styles.passwordStrength}>
-                <Text style={[styles.strengthText, { color: passwordStrength.color }]}>
+                <Text
+                  style={[
+                    styles.strengthText,
+                    { color: passwordStrength.color },
+                  ]}
+                >
                   Độ mạnh: {passwordStrength.strength}
                 </Text>
               </View>
@@ -399,14 +439,15 @@ export default function Register() {
 
           {/* Confirm Password Input */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>
-              🔐 Xác nhận mật khẩu
-            </Text>
+            <Text style={styles.label}>🔐 Xác nhận mật khẩu</Text>
             <TextInput
               style={[
                 styles.input,
                 errors.confirmPassword && styles.inputError,
-                !errors.confirmPassword && confirmPassword && confirmPassword === password && styles.inputSuccess
+                !errors.confirmPassword &&
+                  confirmPassword &&
+                  confirmPassword === password &&
+                  styles.inputSuccess,
               ]}
               placeholder="Nhập lại mật khẩu"
               placeholderTextColor={MedicalColors.textMuted}
@@ -425,7 +466,7 @@ export default function Register() {
           <TouchableOpacity
             style={[
               styles.registerButton,
-              !isFormValid() && styles.registerButtonDisabled
+              !isFormValid() && styles.registerButtonDisabled,
             ]}
             onPress={handleRegister}
             disabled={loading || !isFormValid()}
@@ -442,7 +483,7 @@ export default function Register() {
           {/* Login Link */}
           <View style={styles.loginContainer}>
             <Text style={styles.loginText}>Đã có tài khoản? </Text>
-            <TouchableOpacity onPress={() => router.push('/Login')}>
+            <TouchableOpacity onPress={() => router.push("/Login")}>
               <Text style={styles.loginLink}>Đăng nhập ngay</Text>
             </TouchableOpacity>
           </View>
@@ -469,17 +510,17 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     padding: 20,
     paddingTop: 60,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 30,
   },
   logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 10,
   },
   logoIcon: {
@@ -488,19 +529,19 @@ const styles = StyleSheet.create({
   },
   logoText: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: MedicalColors.primary,
   },
   subtitle: {
     fontSize: 16,
     color: MedicalColors.textSecondary,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 5,
   },
   description: {
     fontSize: 14,
     color: MedicalColors.textMuted,
-    textAlign: 'center',
+    textAlign: "center",
   },
   registrationCard: {
     backgroundColor: MedicalColors.backgroundCard,
@@ -517,42 +558,42 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   cardHeader: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 20,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: MedicalColors.textPrimary,
     marginBottom: 5,
   },
   welcomeText: {
     fontSize: 14,
     color: MedicalColors.textMuted,
-    textAlign: 'center',
+    textAlign: "center",
   },
   roleSelection: {
     marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     color: MedicalColors.textPrimary,
     marginBottom: 12,
   },
   roleNote: {
     fontSize: 12,
     color: MedicalColors.info,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 12,
-    fontStyle: 'italic',
-    backgroundColor: '#E3F2FD',
+    fontStyle: "italic",
+    backgroundColor: "#E3F2FD",
     padding: 8,
     borderRadius: 8,
   },
   roleOptions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     gap: 8,
   },
   roleOption: {
@@ -560,10 +601,10 @@ const styles = StyleSheet.create({
     backgroundColor: MedicalColors.background,
     borderRadius: 12,
     padding: 12,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
     borderColor: MedicalColors.border,
-    position: 'relative',
+    position: "relative",
   },
   roleOptionIcon: {
     fontSize: 24,
@@ -571,38 +612,38 @@ const styles = StyleSheet.create({
   },
   roleOptionTitle: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     color: MedicalColors.textPrimary,
     marginBottom: 4,
-    textAlign: 'center',
+    textAlign: "center",
   },
   roleOptionDescription: {
     fontSize: 10,
     color: MedicalColors.textMuted,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 14,
   },
   selectedIndicator: {
-    position: 'absolute',
+    position: "absolute",
     top: -5,
     right: -5,
     width: 20,
     height: 20,
     borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   selectedText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   inputContainer: {
     marginBottom: 16,
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: MedicalColors.textPrimary,
     marginBottom: 8,
   },
@@ -617,37 +658,37 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderColor: MedicalColors.inputBorderError,
-    backgroundColor: '#FFF5F5',
+    backgroundColor: "#FFF5F5",
   },
   inputSuccess: {
     borderColor: MedicalColors.inputBorderSuccess,
-    backgroundColor: '#F0FFF4',
+    backgroundColor: "#F0FFF4",
   },
   errorText: {
     color: MedicalColors.error,
     fontSize: 12,
     marginTop: 4,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   helperText: {
     color: MedicalColors.textMuted,
     fontSize: 12,
     marginTop: 4,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   passwordStrength: {
     marginTop: 8,
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   strengthText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   registerButton: {
     backgroundColor: MedicalColors.secondary,
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 20,
     shadowColor: MedicalColors.shadowMedium,
     shadowOffset: {
@@ -664,14 +705,14 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   registerButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   loginContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
   },
   loginText: {
     fontSize: 14,
@@ -680,21 +721,21 @@ const styles = StyleSheet.create({
   loginLink: {
     fontSize: 14,
     color: MedicalColors.primary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   footer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 20,
   },
   footerText: {
     fontSize: 14,
     color: MedicalColors.textSecondary,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 4,
   },
   footerSubtext: {
     fontSize: 12,
     color: MedicalColors.textMuted,
-    textAlign: 'center',
+    textAlign: "center",
   },
-}); 
+});

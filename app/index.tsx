@@ -4,19 +4,22 @@ import { ActivityIndicator, View } from "react-native";
 import { useAuth } from "../hooks/useAuth";
 
 export default function Index() {
-  const { user, loading } = useAuth();
+  const { user, userProfile, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (!loading) {
-      if (user) {
-        // @ts-ignore - Expo Router type issue with tab navigation
-        router.replace("/(tabs)/Home");
+      if (user && userProfile) {
+        if (userProfile.role === "administrator") {
+          router.replace("/(admin)/Dashboard");
+        } else {
+          router.replace("/(tabs)/Home");
+        }
       } else {
         router.replace("/Login");
       }
     }
-  }, [user, loading, router]);
+  }, [user, userProfile, loading, router]);
 
   return (
     <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>

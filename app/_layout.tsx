@@ -1,10 +1,10 @@
 // Initialize Firebase first
-import '../lib/firebase';
+import "../lib/firebase";
 
 import {
-    DarkTheme,
-    DefaultTheme,
-    ThemeProvider,
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider,
 } from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
@@ -34,41 +34,28 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Stack>
+        <Stack screenOptions={{ headerShown: false }}>
           {!user ? (
             <>
-              <Stack.Screen 
-                name="Login" 
-                options={{ 
-                  title: "Đăng nhập",
-                  headerShown: false 
-                }} 
+              <Stack.Screen name="Login" options={{ title: "Đăng nhập" }} />
+              <Stack.Screen name="Register" options={{ title: "Đăng ký" }} />
+              <Stack.Screen
+                name="ResetPassword"
+                options={{ title: "Đặt lại mật khẩu", presentation: "modal" }}
               />
-              <Stack.Screen 
-                name="Register" 
-                options={{ 
-                  title: "Đăng ký",
-                  headerShown: false 
-                }} 
+              <Stack.Screen
+                name="EmailVerification"
+                options={{ title: "Xác minh email" }}
               />
-              <Stack.Screen 
-                name="ResetPassword" 
-                options={{ 
-                  title: "Đặt lại mật khẩu",
-                  presentation: "modal" 
-                }} 
-              />
-              <Stack.Screen 
-                name="EmailVerification" 
-                options={{ 
-                  title: "Xác minh email",
-                  headerShown: false
-                }} 
+              <Stack.Screen
+                name="AccountPending"
+                options={{ title: "Tài khoản chờ duyệt" }}
               />
             </>
           ) : (
             <>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="(admin)" />
               <Stack.Screen name="+not-found" />
             </>
           )}

@@ -11,6 +11,7 @@ export const Colors = {
     text: '#2F3E46',
     background: '#FEFFFF',
     tint: tintColorLight,
+    icon: '#687076',
     tabIconDefault: '#84A98C',
     tabIconSelected: tintColorLight,
   },
@@ -18,6 +19,7 @@ export const Colors = {
     text: '#CAD2C5',
     background: '#2F3E46',
     tint: tintColorDark,
+    icon: '#9BA1A6',
     tabIconDefault: '#84A98C',
     tabIconSelected: tintColorDark,
   },
@@ -143,4 +145,17 @@ export const MedicalIcons = {
   calendar: '📅',
   report: '📋',
   notification: '🔔',
+  
+  // Admin & System
+  profile: '👤',
+  security: '🔒',
+  language: '🌐',
+  users: '👥',
+  approval: '✅',
+  settings: '⚙️',
+  import: '📥',
+  logs: '📄',
+  backup: '💾',
+  records: '📁',
+  emergency: '🚨',
 };

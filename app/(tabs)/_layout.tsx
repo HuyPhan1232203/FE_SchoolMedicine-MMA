@@ -1,5 +1,4 @@
 import { Tabs } from "expo-router";
-import React from "react";
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context"; // Thêm import này
 
@@ -38,6 +37,7 @@ export default function TabLayout() {
         name="Home"
         options={{
           title: "Home",
+          tabBarLabel: "Trang chủ",
           tabBarIcon: ({ color }) => (
             <Fontisto name="home" size={24} color={color} />
           ),
@@ -47,6 +47,7 @@ export default function TabLayout() {
         name="Report"
         options={{
           title: "Report",
+          tabBarLabel: "Báo cáo",
           tabBarIcon: ({ color }) => (
             <FontAwesome5 name="notes-medical" size={24} color={color} />
           ),
@@ -56,6 +57,7 @@ export default function TabLayout() {
         name="Setting"
         options={{
           title: "Setting",
+          tabBarLabel: "Cài đặt",
           tabBarIcon: ({ color }) => (
             <Fontisto name="player-settings" size={24} color={color} />
           ),
