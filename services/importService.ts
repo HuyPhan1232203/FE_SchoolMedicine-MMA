@@ -1,403 +1,317 @@
 import {
-    Timestamp,
-    collection,
-    doc,
-    getDocs,
-    query,
-    where,
-    writeBatch
-} from 'firebase/firestore';
-import { db } from '../lib/firebase';
-import { UserProfile, UserRole, UserStatus } from './userService';
+  addDoc,
+  collection,
+  doc,
+  getDocs,
+  orderBy,
+  query,
+  Timestamp,
+  updateDoc,
+} from "firebase/firestore";
+import { db } from "../lib/firebase";
 
-// Import result interface
-export interface ImportResult {
+export interface ImportTemplate {
+  id: string;
+  name: string;
+  description: string;
+  fields: string[];
+  example: string;
+  icon: string;
+  collection: string;
+  required: boolean;
+}
+
+export interface ImportHistory {
+  id: string;
+  fileName: string;
+  type: string;
+  records: number;
   success: number;
   failed: number;
-  errors: ImportError[];
-  duplicates: number;
+  date: Timestamp;
+  status: "completed" | "processing" | "failed";
+  errorMessage?: string;
+  createdBy: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
-export interface ImportError {
-  row: number;
-  email: string;
-  error: string;
+export interface ImportResult {
+  success: boolean;
+  message: string;
+  recordsProcessed: number;
+  recordsSuccess: number;
+  recordsFailed: number;
+  errors?: string[];
 }
 
-// User data for import
-export interface ImportUserData {
-  email: string;
-  fullName: string;
-  phoneNumber: string;
-  role: UserRole;
-  studentId?: string;       // For parents
-  department?: string;      // For medical staff
-  permissions?: string[];   // For administrators
-  autoApprove?: boolean;    // Auto approve user
-}
-
-// Validate email format
-const isValidEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+// Get import templates
+export const getImportTemplates = (): ImportTemplate[] => {
+  return [
+    {
+      id: "1",
+      name: "Danh sách học sinh",
+      description: "Import danh sách học sinh từ file Excel/CSV",
+      fields: [
+        "Mã học sinh",
+        "Họ tên",
+        "Lớp",
+        "Ngày sinh",
+        "Giới tính",
+        "Số điện thoại phụ huynh",
+      ],
+      example: "HS001,Nguyễn Văn An,10A1,15/03/2008,Nam,0901234567",
+      icon: "👨‍🎓",
+      collection: "students",
+      required: true,
+    },
+    {
+      id: "2",
+      name: "Danh sách phụ huynh",
+      description: "Import thông tin phụ huynh và liên kết với học sinh",
+      fields: [
+        "Email",
+        "Họ tên",
+        "Số điện thoại",
+        "Địa chỉ",
+        "Mã học sinh con",
+      ],
+      example:
+        "nguyenvanan@gmail.com,Nguyễn Văn An,0901234567,123 Đường ABC,HS001",
+      icon: "👨‍👩‍👧‍👦",
+      collection: "parents",
+      required: true,
+    },
+    {
+      id: "3",
+      name: "Danh sách cán bộ y tế",
+      description: "Import thông tin cán bộ y tế nhà trường",
+      fields: ["Email", "Họ tên", "Chức vụ", "Số điện thoại", "Chuyên môn"],
+      example:
+        "bacsilan@school.edu.vn,Nguyễn Thị Lan,Bác sĩ,0912345678,Nhi khoa",
+      icon: "👩‍⚕️",
+      collection: "medical_staff",
+      required: true,
+    },
+    {
+      id: "4",
+      name: "Lịch tiêm chủng",
+      description: "Import lịch tiêm chủng cho học sinh",
+      fields: ["Mã học sinh", "Tên vaccine", "Ngày tiêm", "Liều số", "Ghi chú"],
+      example: "HS001,COVID-19,15/01/2024,1,Liều đầu tiên",
+      icon: "💉",
+      collection: "vaccinations",
+      required: false,
+    },
+    {
+      id: "5",
+      name: "Hồ sơ sức khỏe",
+      description: "Import hồ sơ khám sức khỏe định kỳ",
+      fields: [
+        "Mã học sinh",
+        "Ngày khám",
+        "Chiều cao",
+        "Cân nặng",
+        "Tình trạng sức khỏe",
+      ],
+      example: "HS001,20/12/2024,165,55,Khỏe mạnh",
+      icon: "📋",
+      collection: "health_records",
+      required: false,
+    },
+  ];
 };
 
-// Validate phone number
-const isValidPhoneNumber = (phone: string): boolean => {
-  const phoneRegex = /^[0-9]{10,11}$/;
-  return phoneRegex.test(phone.replace(/[^0-9]/g, ''));
-};
-
-// Validate user data
-const validateUserData = (userData: ImportUserData, rowIndex: number): string | null => {
-  // Check required fields
-  if (!userData.email || !userData.fullName || !userData.phoneNumber || !userData.role) {
-    return `Thiếu thông tin bắt buộc (email, họ tên, số điện thoại, vai trò)`;
-  }
-
-  // Validate email
-  if (!isValidEmail(userData.email)) {
-    return `Email không hợp lệ: ${userData.email}`;
-  }
-
-  // Validate phone
-  if (!isValidPhoneNumber(userData.phoneNumber)) {
-    return `Số điện thoại không hợp lệ: ${userData.phoneNumber}`;
-  }
-
-  // Validate full name length
-  if (userData.fullName.length < 2 || userData.fullName.length > 50) {
-    return `Họ tên phải từ 2-50 ký tự`;
-  }
-
-  // Validate role
-  if (!Object.values(UserRole).includes(userData.role)) {
-    return `Vai trò không hợp lệ: ${userData.role}`;
-  }
-
-  // Validate role-specific fields
-  if (userData.role === UserRole.PARENT && userData.studentId) {
-    if (userData.studentId.length < 6 || userData.studentId.length > 20) {
-      return `Mã học sinh phải từ 6-20 ký tự`;
-    }
-  }
-
-  if (userData.role === UserRole.MEDICAL_STAFF && userData.department) {
-    if (userData.department.length < 2 || userData.department.length > 100) {
-      return `Tên khoa phải từ 2-100 ký tự`;
-    }
-  }
-
-  return null; // No errors
-};
-
-// Check for existing users
-const checkExistingUsers = async (emails: string[]): Promise<string[]> => {
+// Get import history
+export const getImportHistory = async (): Promise<ImportHistory[]> => {
   try {
-    const existingEmails: string[] = [];
-    
-    // Firestore has limit of 10 items per "in" query, so we batch them
-    const chunks = [];
-    for (let i = 0; i < emails.length; i += 10) {
-      chunks.push(emails.slice(i, i + 10));
-    }
+    const historyRef = collection(db, "import_history");
+    const q = query(historyRef, orderBy("createdAt", "desc"));
+    const querySnapshot = await getDocs(q);
 
-    for (const chunk of chunks) {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('email', 'in', chunk));
-      const querySnapshot = await getDocs(q);
-      
-      querySnapshot.forEach((doc) => {
-        const userData = doc.data() as UserProfile;
-        existingEmails.push(userData.email);
-      });
-    }
-
-    return existingEmails;
+    return querySnapshot.docs.map((doc) => ({
+      ...doc.data(),
+      id: doc.id,
+    })) as ImportHistory[];
   } catch (error) {
-    console.error('Error checking existing users:', error);
+    console.error("Error getting import history:", error);
     throw error;
   }
 };
 
-// Generate UID for new user (temporary until Firebase Auth user is created)
-const generateTempUID = (): string => {
-  return 'temp_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+// Create import history record
+export const createImportHistory = async (
+  history: Omit<ImportHistory, "id" | "createdAt" | "updatedAt">
+): Promise<string> => {
+  try {
+    const now = Timestamp.now();
+    const docRef = await addDoc(collection(db, "import_history"), {
+      ...history,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error("Error creating import history:", error);
+    throw error;
+  }
 };
 
-// Import users from data array
-export const importUsers = async (usersData: ImportUserData[]): Promise<ImportResult> => {
-  const result: ImportResult = {
-    success: 0,
-    failed: 0,
-    errors: [],
-    duplicates: 0,
-  };
-
+// Update import history
+export const updateImportHistory = async (
+  id: string,
+  updates: Partial<Omit<ImportHistory, "id" | "createdAt">>
+): Promise<void> => {
   try {
-    // Validate all users first
-    const validUsers: ImportUserData[] = [];
-    const emails: string[] = [];
+    const historyRef = doc(db, "import_history", id);
+    await updateDoc(historyRef, {
+      ...updates,
+      updatedAt: Timestamp.now(),
+    });
+  } catch (error) {
+    console.error("Error updating import history:", error);
+    throw error;
+  }
+};
 
-    for (let i = 0; i < usersData.length; i++) {
-      const userData = usersData[i];
-      const validationError = validateUserData(userData, i + 1);
+// Process CSV data
+export const processCSVData = async (
+  csvData: string,
+  template: ImportTemplate,
+  createdBy: string
+): Promise<ImportResult> => {
+  try {
+    const lines = csvData.trim().split("\n");
+    const headers = lines[0].split(",");
+    const data = lines.slice(1);
 
-      if (validationError) {
-        result.failed++;
-        result.errors.push({
-          row: i + 1,
-          email: userData.email || 'Unknown',
-          error: validationError,
-        });
-        continue;
-      }
+    let success = 0;
+    let failed = 0;
+    const errors: string[] = [];
 
-      validUsers.push(userData);
-      emails.push(userData.email.toLowerCase());
-    }
-
-    // Check for duplicates in the import data
-    const emailCounts = emails.reduce((acc, email) => {
-      acc[email] = (acc[email] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    const duplicateEmails = Object.keys(emailCounts).filter(email => emailCounts[email] > 1);
-    if (duplicateEmails.length > 0) {
-      for (const email of duplicateEmails) {
-        result.failed += emailCounts[email] - 1; // All but one are duplicates
-        result.errors.push({
-          row: 0,
-          email,
-          error: `Email trùng lặp trong file import: ${emailCounts[email]} lần`,
-        });
-      }
-    }
-
-    // Check for existing users in database
-    const existingEmails = await checkExistingUsers(emails);
-    for (const email of existingEmails) {
-      result.duplicates++;
-      result.errors.push({
-        row: 0,
-        email,
-        error: 'Email đã tồn tại trong hệ thống',
-      });
-    }
-
-    // Filter out duplicates and existing users
-    const uniqueEmails = new Set<string>();
-    const usersToImport = validUsers.filter(user => {
-      const email = user.email.toLowerCase();
-      if (existingEmails.includes(email) || uniqueEmails.has(email)) {
-        return false;
-      }
-      uniqueEmails.add(email);
-      return true;
+    // Create import history record
+    const historyId = await createImportHistory({
+      fileName: `import_${template.name}_${
+        new Date().toISOString().split("T")[0]
+      }.csv`,
+      type: template.name,
+      records: data.length,
+      success: 0,
+      failed: 0,
+      date: Timestamp.now(),
+      status: "processing",
+      createdBy,
     });
 
-    // Import users in batches (Firestore batch limit is 500)
-    const batchSize = 450; // Leave some room for safety
-    
-    for (let i = 0; i < usersToImport.length; i += batchSize) {
-      const batch = writeBatch(db);
-      const batchUsers = usersToImport.slice(i, i + batchSize);
+    // Process each line
+    for (let i = 0; i < data.length; i++) {
+      try {
+        const values = data[i].split(",");
+        const record: any = {};
 
-      for (const userData of batchUsers) {
-        try {
-          const tempUID = generateTempUID();
-          const userRef = doc(db, 'users', tempUID);
+        // Map values to fields
+        headers.forEach((header, index) => {
+          record[header.trim()] = values[index]?.trim() || "";
+        });
 
-          const userProfile: Partial<UserProfile> = {
-            uid: tempUID,
-            email: userData.email.toLowerCase(),
-            fullName: userData.fullName,
-            phoneNumber: userData.phoneNumber,
-            role: userData.role,
-            status: userData.autoApprove ? UserStatus.APPROVED : UserStatus.PENDING,
-            studentId: userData.studentId,
-            department: userData.department,
-            permissions: userData.permissions || [],
-            createdAt: Timestamp.now(),
-            updatedAt: Timestamp.now(),
-          };
+        // Add metadata
+        record.createdAt = Timestamp.now();
+        record.updatedAt = Timestamp.now();
+        record.importedBy = createdBy;
 
-          // Add auto-approval info if applicable
-          if (userData.autoApprove) {
-            userProfile.approvedBy = 'SYSTEM_IMPORT';
-            userProfile.approvedAt = Timestamp.now();
-          }
-
-          batch.set(userRef, userProfile);
-          result.success++;
-        } catch (error) {
-          result.failed++;
-          result.errors.push({
-            row: i + 1,
-            email: userData.email,
-            error: `Lỗi tạo user: ${error}`,
-          });
-        }
+        // Save to appropriate collection
+        await addDoc(collection(db, template.collection), record);
+        success++;
+      } catch (error) {
+        failed++;
+        errors.push(`Line ${i + 2}: ${error}`);
       }
-
-      // Commit batch
-      await batch.commit();
-      console.log(`✅ Imported batch ${Math.floor(i / batchSize) + 1}: ${batchUsers.length} users`);
     }
 
-  } catch (error) {
-    console.error('Import error:', error);
-    throw new Error(`Lỗi import: ${error}`);
-  }
+    // Update import history
+    await updateImportHistory(historyId, {
+      success,
+      failed,
+      status: failed === 0 ? "completed" : "failed",
+      errorMessage: errors.length > 0 ? errors.join("; ") : undefined,
+    });
 
-  return result;
-};
-
-// Parse JSON data
-export const parseJSONData = (jsonString: string): ImportUserData[] => {
-  try {
-    const data = JSON.parse(jsonString);
-    
-    if (!Array.isArray(data)) {
-      throw new Error('Dữ liệu JSON phải là một mảng');
-    }
-
-    return data.map((item, index) => ({
-      email: item.email || '',
-      fullName: item.fullName || item.full_name || '',
-      phoneNumber: item.phoneNumber || item.phone_number || item.phone || '',
-      role: item.role || UserRole.PARENT,
-      studentId: item.studentId || item.student_id || undefined,
-      department: item.department || undefined,
-      permissions: item.permissions || [],
-      autoApprove: item.autoApprove || item.auto_approve || false,
-    }));
-  } catch (error) {
-    throw new Error(`Lỗi phân tích JSON: ${error}`);
-  }
-};
-
-// Parse CSV data
-export const parseCSVData = (csvString: string): ImportUserData[] => {
-  try {
-    const lines = csvString.trim().split('\n');
-    
-    if (lines.length < 2) {
-      throw new Error('File CSV phải có ít nhất 2 dòng (header + data)');
-    }
-
-    // Parse header
-    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-    
-    // Expected headers (with alternatives)
-    const headerMap: Record<string, string[]> = {
-      email: ['email', 'Email', 'EMAIL'],
-      fullName: ['fullName', 'full_name', 'Full Name', 'Họ tên', 'Ten'],
-      phoneNumber: ['phoneNumber', 'phone_number', 'phone', 'Phone', 'Số điện thoại', 'SDT'],
-      role: ['role', 'Role', 'Vai trò', 'Position'],
-      studentId: ['studentId', 'student_id', 'Student ID', 'Mã học sinh'],
-      department: ['department', 'Department', 'Khoa'],
-      permissions: ['permissions', 'Permissions', 'Quyền'],
-      autoApprove: ['autoApprove', 'auto_approve', 'Auto Approve'],
+    return {
+      success: failed === 0,
+      message:
+        failed === 0
+          ? `Import thành công ${success} bản ghi`
+          : `Import hoàn thành với ${success} thành công, ${failed} thất bại`,
+      recordsProcessed: data.length,
+      recordsSuccess: success,
+      recordsFailed: failed,
+      errors: errors.length > 0 ? errors : undefined,
     };
-
-    // Find column indices
-    const columnMap: Record<string, number> = {};
-    for (const [key, alternatives] of Object.entries(headerMap)) {
-      const index = headers.findIndex(h => alternatives.includes(h));
-      if (index !== -1) {
-        columnMap[key] = index;
-      }
-    }
-
-    // Validate required columns
-    if (columnMap.email === undefined || columnMap.fullName === undefined || 
-        columnMap.phoneNumber === undefined || columnMap.role === undefined) {
-      throw new Error('File CSV phải có các cột: email, fullName, phoneNumber, role');
-    }
-
-    // Parse data rows
-    const users: ImportUserData[] = [];
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
-      
-      if (values.length < headers.length) {
-        console.warn(`Dòng ${i + 1}: Không đủ dữ liệu, bỏ qua`);
-        continue;
-      }
-
-      const user: ImportUserData = {
-        email: values[columnMap.email] || '',
-        fullName: values[columnMap.fullName] || '',
-        phoneNumber: values[columnMap.phoneNumber] || '',
-        role: (values[columnMap.role] as UserRole) || UserRole.PARENT,
-        studentId: columnMap.studentId !== undefined ? values[columnMap.studentId] : undefined,
-        department: columnMap.department !== undefined ? values[columnMap.department] : undefined,
-        permissions: columnMap.permissions !== undefined ? 
-          values[columnMap.permissions]?.split(';').filter(p => p.trim()) : [],
-        autoApprove: columnMap.autoApprove !== undefined ? 
-          values[columnMap.autoApprove]?.toLowerCase() === 'true' : false,
-      };
-
-      users.push(user);
-    }
-
-    return users;
   } catch (error) {
-    throw new Error(`Lỗi phân tích CSV: ${error}`);
+    console.error("Error processing CSV data:", error);
+    throw error;
   }
 };
 
-// Generate sample JSON data
-export const generateSampleJSON = (): string => {
-  const sampleData: ImportUserData[] = [
-    {
-      email: 'phuhuynha@gmail.com',
-      fullName: 'Nguyễn Văn A',
-      phoneNumber: '0123456789',
-      role: UserRole.PARENT,
-      studentId: 'HS001',
-      autoApprove: false,
-    },
-    {
-      email: 'phuhuynhb@gmail.com',
-      fullName: 'Trần Thị B',
-      phoneNumber: '0987654321',
-      role: UserRole.PARENT,
-      studentId: 'HS002',
-      autoApprove: false,
-    },
-    {
-      email: 'ytea@school.edu.vn',
-      fullName: 'BS. Lê Văn C',
-      phoneNumber: '0111222333',
-      role: UserRole.MEDICAL_STAFF,
-      department: 'Khoa Y tế trường học',
-      autoApprove: true,
-    },
-    {
-      email: 'admin@school.edu.vn',
-      fullName: 'Nguyễn Thị D',
-      phoneNumber: '0444555666',
-      role: UserRole.ADMINISTRATOR,
-      permissions: ['manage_users', 'view_reports', 'system_admin'],
-      autoApprove: true,
-    },
-  ];
+// Initialize sample import history
+export const initializeImportHistory = async (
+  createdBy: string
+): Promise<void> => {
+  try {
+    const sampleHistory: Omit<
+      ImportHistory,
+      "id" | "createdAt" | "updatedAt"
+    >[] = [
+      {
+        fileName: "danh_sach_hoc_sinh_2024.xlsx",
+        type: "Danh sách học sinh",
+        records: 350,
+        success: 348,
+        failed: 2,
+        date: Timestamp.now(),
+        status: "completed",
+        createdBy,
+      },
+      {
+        fileName: "phu_huynh_quy_1.csv",
+        type: "Danh sách phụ huynh",
+        records: 280,
+        success: 275,
+        failed: 5,
+        date: Timestamp.now(),
+        status: "completed",
+        createdBy,
+      },
+      {
+        fileName: "lich_tiem_chung.xlsx",
+        type: "Lịch tiêm chủng",
+        records: 150,
+        success: 0,
+        failed: 150,
+        date: Timestamp.now(),
+        status: "failed",
+        errorMessage: "Định dạng file không đúng",
+        createdBy,
+      },
+      {
+        fileName: "ho_so_suc_khoe.xlsx",
+        type: "Hồ sơ sức khỏe",
+        records: 200,
+        success: 200,
+        failed: 0,
+        date: Timestamp.now(),
+        status: "completed",
+        createdBy,
+      },
+    ];
 
-  return JSON.stringify(sampleData, null, 2);
+    for (const history of sampleHistory) {
+      await createImportHistory(history);
+    }
+
+    console.log("✅ Import history initialized successfully");
+  } catch (error) {
+    console.error("Error initializing import history:", error);
+    throw error;
+  }
 };
-
-// Generate sample CSV data
-export const generateSampleCSV = (): string => {
-  const headers = 'email,fullName,phoneNumber,role,studentId,department,permissions,autoApprove';
-  const rows = [
-    'phuhuynha@gmail.com,"Nguyễn Văn A",0123456789,parent,HS001,,,"false"',
-    'phuhuynhb@gmail.com,"Trần Thị B",0987654321,parent,HS002,,,"false"',
-    'ytea@school.edu.vn,"BS. Lê Văn C",0111222333,medical_staff,,"Khoa Y tế trường học",,"true"',
-    'admin@school.edu.vn,"Nguyễn Thị D",0444555666,administrator,,,"manage_users;view_reports;system_admin","true"',
-  ];
-
-  return [headers, ...rows].join('\n');
-}; 

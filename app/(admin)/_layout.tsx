@@ -1,16 +1,15 @@
 import { router, Tabs } from "expo-router";
 import { useEffect } from "react";
-import { ActivityIndicator, Platform, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { HapticTab } from "../../components/HapticTab";
 import TabBarBackground from "../../components/ui/TabBarBackground";
-import { Colors } from "../../constants/Colors";
+import { Colors, MedicalColors } from "../../constants/Colors";
 import { useAuth } from "../../hooks/useAuth";
 import { useColorScheme } from "../../hooks/useColorScheme";
-import { UserRole } from "../../services/userService";
 
 export default function AdminLayout() {
   const colorScheme = useColorScheme();
@@ -20,12 +19,9 @@ export default function AdminLayout() {
   useEffect(() => {
     if (!loading) {
       // Kiểm tra quyền admin
-      if (
-        !canAccess ||
-        !userProfile ||
-        userProfile.role !== UserRole.ADMINISTRATOR
-      ) {
-        router.replace("/(tabs)/Home");
+      if (!canAccess || !userProfile || userProfile.role !== "administrator") {
+        console.log("Admin access denied, redirecting to login");
+        router.replace("/Login");
         return;
       }
     }
@@ -36,7 +32,7 @@ export default function AdminLayout() {
     loading ||
     !canAccess ||
     !userProfile ||
-    userProfile.role !== UserRole.ADMINISTRATOR
+    userProfile.role !== "administrator"
   ) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
@@ -52,16 +48,18 @@ export default function AdminLayout() {
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            position: "absolute",
-          },
-          android: {
-            paddingTop: insets.top,
-            height: 60 + insets.top,
-          },
-          default: {},
-        }),
+        tabBarStyle: {
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom,
+          paddingTop: 8,
+          backgroundColor: Colors[colorScheme ?? "light"].background,
+          borderTopWidth: 1,
+          borderTopColor: MedicalColors.border,
+          position: "relative",
+          left: 0,
+          right: 0,
+          bottom: 0,
+        },
       }}
     >
       <Tabs.Screen

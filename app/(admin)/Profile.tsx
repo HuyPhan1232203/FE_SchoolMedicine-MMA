@@ -29,7 +29,10 @@ interface SecuritySettings {
 export default function Profile() {
   const { user, userProfile } = useAuth();
   useEffect(() => {
-    if (userProfile && userProfile.role !== "administrator") {
+    if (
+      userProfile &&
+      !["administrator", "director", "manager"].includes(userProfile.role)
+    ) {
       router.replace("/Login");
     }
   }, [userProfile]);
@@ -133,10 +136,14 @@ export default function Profile() {
         subtitle="Quản lý thông tin tài khoản"
         icon={<Text style={{ fontSize: 14 }}>{MedicalIcons.profile}</Text>}
         showBack={true}
-        onBack={() => router.back()}
+        onBack={() => router.replace("/(admin)/SystemConfig")}
       />
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 50 }}
+      >
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.profileHeader}>

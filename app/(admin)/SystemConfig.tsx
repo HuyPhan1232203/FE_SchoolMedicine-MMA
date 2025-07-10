@@ -1,5 +1,5 @@
 import { router, Stack } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Dimensions,
@@ -16,6 +16,20 @@ import { MedicalColors, MedicalIcons } from "../../constants/Colors";
 import { useAuth } from "../../hooks/useAuth";
 
 const { width } = Dimensions.get("window");
+
+// Helper function to get role display name
+const getRoleDisplayName = (role: string) => {
+  switch (role) {
+    case "administrator":
+      return "Quản trị viên";
+    case "director":
+      return "Giám đốc";
+    case "manager":
+      return "Quản lý";
+    default:
+      return role;
+  }
+};
 
 export default function SystemConfig() {
   const [schoolInfo, setSchoolInfo] = useState({
@@ -41,27 +55,84 @@ export default function SystemConfig() {
   });
 
   const [broadcastMessage, setBroadcastMessage] = useState("");
-  const { userProfile } = useAuth();
+  const [schoolDirty, setSchoolDirty] = useState(false);
+  const [notificationDirty, setNotificationDirty] = useState(false);
+  const [systemDirty, setSystemDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
+  const { userProfile, signOut } = useAuth();
 
-  const handleSaveSchoolInfo = () => {
-    Alert.alert("Xác nhận", "Bạn có chắc muốn lưu thông tin trường học?", [
-      { text: "Hủy", style: "cancel" },
-      {
-        text: "Lưu",
-        onPress: () => {
-          // In real app, save to Firestore
-          Alert.alert("Thành công", "Đã lưu thông tin trường học");
-        },
-      },
-    ]);
+  const loadSystemConfig = () => {
+    // In a real app, load config from Firestore
+    // For now, we'll just set default values
+    setNotificationSettings({
+      emailNotifications: true,
+      smsNotifications: false,
+      pushNotifications: true,
+      reminderNotifications: true,
+    });
+    setSystemSettings({
+      allowSelfRegistration: true,
+      requireEmailVerification: true,
+      autoApproveParents: false,
+      maintenanceMode: false,
+    });
   };
 
-  const handleSaveNotificationSettings = () => {
-    Alert.alert("Thành công", "Đã lưu cài đặt thông báo");
+  useEffect(() => {
+    loadSystemConfig();
+  }, []);
+
+  // Reset system config state when user changes
+  useEffect(() => {
+    if (userProfile) {
+      loadSystemConfig();
+    }
+  }, [userProfile?.uid]);
+
+  const handleSaveSchoolInfo = async () => {
+    setSaving(true);
+    try {
+      // In real app, save to Firestore
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
+      setSchoolDirty(false);
+      setSuccessMsg("Đã lưu thông tin trường học");
+      setTimeout(() => setSuccessMsg(""), 3000);
+    } catch (error) {
+      Alert.alert("Lỗi", "Không thể lưu thông tin trường học");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleSaveSystemSettings = () => {
-    Alert.alert("Thành công", "Đã lưu cài đặt hệ thống");
+  const handleSaveNotificationSettings = async () => {
+    setSaving(true);
+    try {
+      // In real app, save to Firestore
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
+      setNotificationDirty(false);
+      setSuccessMsg("Đã lưu cài đặt thông báo");
+      setTimeout(() => setSuccessMsg(""), 3000);
+    } catch (error) {
+      Alert.alert("Lỗi", "Không thể lưu cài đặt thông báo");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveSystemSettings = async () => {
+    setSaving(true);
+    try {
+      // In real app, save to Firestore
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
+      setSystemDirty(false);
+      setSuccessMsg("Đã lưu cài đặt hệ thống");
+      setTimeout(() => setSuccessMsg(""), 3000);
+    } catch (error) {
+      Alert.alert("Lỗi", "Không thể lưu cài đặt hệ thống");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSendBroadcast = () => {
@@ -123,11 +194,15 @@ export default function SystemConfig() {
     ]);
   };
 
+  const handleSystemHealthCheck = () => {
+    Alert.alert("Kiểm tra hệ thống", "Hệ thống đang hoạt động bình thường");
+  };
+
   const ConfigSection = ({
     title,
     children,
   }: {
-    title: string;
+    title: React.ReactNode;
     children: React.ReactNode;
   }) => (
     <View style={styles.section}>
@@ -142,19 +217,24 @@ export default function SystemConfig() {
     onChangeText,
     placeholder,
     multiline = false,
+    onDirty,
   }: {
     label: string;
     value: string;
     onChangeText: (text: string) => void;
     placeholder?: string;
     multiline?: boolean;
+    onDirty?: () => void;
   }) => (
     <View style={styles.inputGroup}>
       <Text style={styles.inputLabel}>{label}</Text>
       <TextInput
         style={[styles.input, multiline && styles.multilineInput]}
         value={value}
-        onChangeText={onChangeText}
+        onChangeText={(text) => {
+          onChangeText(text);
+          onDirty?.();
+        }}
         placeholder={placeholder}
         multiline={multiline}
         numberOfLines={multiline ? 4 : 1}
@@ -167,11 +247,13 @@ export default function SystemConfig() {
     value,
     onValueChange,
     description,
+    onDirty,
   }: {
     label: string;
     value: boolean;
     onValueChange: (value: boolean) => void;
     description?: string;
+    onDirty?: () => void;
   }) => (
     <View style={styles.switchGroup}>
       <View style={styles.switchInfo}>
@@ -182,7 +264,10 @@ export default function SystemConfig() {
       </View>
       <Switch
         value={value}
-        onValueChange={onValueChange}
+        onValueChange={(val) => {
+          onValueChange(val);
+          onDirty?.();
+        }}
         trackColor={{ false: "#e0e0e0", true: MedicalColors.primary }}
         thumbColor={value ? "#FFFFFF" : "#f4f3f4"}
       />
@@ -230,16 +315,81 @@ export default function SystemConfig() {
       <ScrollView
         style={styles.container}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 20 }}
       >
         {/* Header */}
         <CustomHeader
           title="Cấu hình hệ thống"
           icon={<Text style={{ fontSize: 14 }}>{MedicalIcons.settings}</Text>}
         />
+        {successMsg ? (
+          <View style={styles.successMsg}>
+            <Text style={{ fontSize: 14, color: "#27AE60" }}>✓</Text>
+            <Text style={{ marginLeft: 6, color: "#27AE60" }}>
+              {successMsg}
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Admin Profile Section */}
+        <ConfigSection title="👤 Thông tin Admin">
+          <View style={styles.profileContainer}>
+            <View style={styles.profileAvatar}>
+              <Text style={styles.profileAvatarText}>
+                {userProfile?.fullName?.charAt(0) || "A"}
+              </Text>
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName}>
+                {userProfile?.fullName || "Administrator"}
+              </Text>
+              <Text style={styles.profileRole}>
+                {getRoleDisplayName(userProfile?.role || "administrator")}
+              </Text>
+              <Text style={styles.profileEmail}>
+                {userProfile?.email || "admin@school.edu.vn"}
+              </Text>
+              <Text style={styles.profilePhone}>
+                {userProfile?.phoneNumber || "N/A"}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.profileStats}>
+            <View style={styles.profileStat}>
+              <Text style={styles.profileStatLabel}>Trạng thái</Text>
+              <Text style={styles.profileStatValue}>
+                {userProfile?.status === "active"
+                  ? "🟢 Hoạt động"
+                  : "🔴 Không hoạt động"}
+              </Text>
+            </View>
+            <View style={styles.profileStat}>
+              <Text style={styles.profileStatLabel}>Quyền hạn</Text>
+              <Text style={styles.profileStatValue}>
+                {userProfile?.permissions?.includes("*")
+                  ? "Tất cả quyền"
+                  : `${userProfile?.permissions?.length || 0} quyền`}
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.editProfileBtn}
+            onPress={() => router.push("/(admin)/Profile")}
+          >
+            <Text style={styles.editProfileBtnText}>✏️ Chỉnh sửa Profile</Text>
+          </TouchableOpacity>
+        </ConfigSection>
 
         {/* School Information */}
-        <ConfigSection title="🏫 Thông tin trường học">
+        <ConfigSection
+          title={
+            <>
+              <Text style={{ fontWeight: "bold" }}>
+                🏫 Thông tin trường học
+              </Text>
+            </>
+          }
+        >
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
             <View style={{ flex: 1, minWidth: (width - 80) / 2 }}>
               <InputField
@@ -249,6 +399,7 @@ export default function SystemConfig() {
                   setSchoolInfo((prev) => ({ ...prev, name: text }))
                 }
                 placeholder="Nhập tên trường"
+                onDirty={() => setSchoolDirty(true)}
               />
             </View>
             <View style={{ flex: 1, minWidth: (width - 80) / 2 }}>
@@ -259,6 +410,7 @@ export default function SystemConfig() {
                   setSchoolInfo((prev) => ({ ...prev, phone: text }))
                 }
                 placeholder="Nhập số điện thoại"
+                onDirty={() => setSchoolDirty(true)}
               />
             </View>
           </View>
@@ -269,6 +421,7 @@ export default function SystemConfig() {
               setSchoolInfo((prev) => ({ ...prev, email: text }))
             }
             placeholder="Nhập email"
+            onDirty={() => setSchoolDirty(true)}
           />
           <InputField
             label="Website"
@@ -277,6 +430,7 @@ export default function SystemConfig() {
               setSchoolInfo((prev) => ({ ...prev, website: text }))
             }
             placeholder="Nhập website"
+            onDirty={() => setSchoolDirty(true)}
           />
           <InputField
             label="Địa chỉ"
@@ -286,17 +440,32 @@ export default function SystemConfig() {
             }
             placeholder="Nhập địa chỉ"
             multiline
+            onDirty={() => setSchoolDirty(true)}
           />
-          <ActionButton
-            title="Lưu thông tin trường"
-            onPress={handleSaveSchoolInfo}
-            style={styles.saveButton}
-            icon="💾"
-          />
+          {/* Save button bottom right */}
+          {schoolDirty && (
+            <TouchableOpacity
+              style={styles.saveBtnBottom}
+              onPress={handleSaveSchoolInfo}
+              disabled={saving}
+            >
+              {saving ? (
+                <Text style={styles.saveBtnText}>⏳</Text>
+              ) : (
+                <Text style={styles.saveBtnText}>💾 Lưu</Text>
+              )}
+            </TouchableOpacity>
+          )}
         </ConfigSection>
 
         {/* Notification Settings */}
-        <ConfigSection title="🔔 Cài đặt thông báo">
+        <ConfigSection
+          title={
+            <>
+              <Text style={{ fontWeight: "bold" }}>🔔 Cài đặt thông báo</Text>
+            </>
+          }
+        >
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
             <View style={{ flex: 1, minWidth: (width - 80) / 2 }}>
               <SwitchField
@@ -309,6 +478,7 @@ export default function SystemConfig() {
                   }))
                 }
                 description="Gửi thông báo qua email"
+                onDirty={() => setNotificationDirty(true)}
               />
             </View>
             <View style={{ flex: 1, minWidth: (width - 80) / 2 }}>
@@ -322,6 +492,7 @@ export default function SystemConfig() {
                   }))
                 }
                 description="Gửi thông báo push trên app"
+                onDirty={() => setNotificationDirty(true)}
               />
             </View>
           </View>
@@ -337,6 +508,7 @@ export default function SystemConfig() {
                   }))
                 }
                 description="Gửi thông báo qua tin nhắn SMS"
+                onDirty={() => setNotificationDirty(true)}
               />
             </View>
             <View style={{ flex: 1, minWidth: (width - 80) / 2 }}>
@@ -350,19 +522,34 @@ export default function SystemConfig() {
                   }))
                 }
                 description="Gửi thông báo nhắc nhở tự động"
+                onDirty={() => setNotificationDirty(true)}
               />
             </View>
           </View>
-          <ActionButton
-            title="Lưu cài đặt thông báo"
-            onPress={handleSaveNotificationSettings}
-            style={styles.saveButton}
-            icon="💾"
-          />
+          {/* Save button bottom right */}
+          {notificationDirty && (
+            <TouchableOpacity
+              style={styles.saveBtnBottom}
+              onPress={handleSaveNotificationSettings}
+              disabled={saving}
+            >
+              {saving ? (
+                <Text style={styles.saveBtnText}>⏳</Text>
+              ) : (
+                <Text style={styles.saveBtnText}>💾 Lưu</Text>
+              )}
+            </TouchableOpacity>
+          )}
         </ConfigSection>
 
         {/* System Settings */}
-        <ConfigSection title="⚙️ Cài đặt hệ thống">
+        <ConfigSection
+          title={
+            <>
+              <Text style={{ fontWeight: "bold" }}>⚙️ Cài đặt hệ thống</Text>
+            </>
+          }
+        >
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
             <View style={{ flex: 1, minWidth: (width - 80) / 2 }}>
               <SwitchField
@@ -375,6 +562,7 @@ export default function SystemConfig() {
                   }))
                 }
                 description="Người dùng có thể tự đăng ký tài khoản"
+                onDirty={() => setSystemDirty(true)}
               />
             </View>
             <View style={{ flex: 1, minWidth: (width - 80) / 2 }}>
@@ -388,6 +576,7 @@ export default function SystemConfig() {
                   }))
                 }
                 description="Bắt buộc xác thực email khi đăng ký"
+                onDirty={() => setSystemDirty(true)}
               />
             </View>
           </View>
@@ -403,6 +592,7 @@ export default function SystemConfig() {
                   }))
                 }
                 description="Tự động phê duyệt tài khoản phụ huynh"
+                onDirty={() => setSystemDirty(true)}
               />
             </View>
             <View style={{ flex: 1, minWidth: (width - 80) / 2 }}>
@@ -416,19 +606,34 @@ export default function SystemConfig() {
                   }))
                 }
                 description="Chỉ admin có thể truy cập hệ thống"
+                onDirty={() => setSystemDirty(true)}
               />
             </View>
           </View>
-          <ActionButton
-            title="Lưu cài đặt hệ thống"
-            onPress={handleSaveSystemSettings}
-            style={styles.saveButton}
-            icon="💾"
-          />
+          {/* Save button bottom right */}
+          {systemDirty && (
+            <TouchableOpacity
+              style={styles.saveBtnBottom}
+              onPress={handleSaveSystemSettings}
+              disabled={saving}
+            >
+              {saving ? (
+                <Text style={styles.saveBtnText}>⏳</Text>
+              ) : (
+                <Text style={styles.saveBtnText}>💾 Lưu</Text>
+              )}
+            </TouchableOpacity>
+          )}
         </ConfigSection>
 
         {/* Broadcast Message */}
-        <ConfigSection title="📢 Gửi thông báo chung">
+        <ConfigSection
+          title={
+            <>
+              <Text style={{ fontWeight: "bold" }}>📢 Gửi thông báo chung</Text>
+            </>
+          }
+        >
           <InputField
             label="Nội dung thông báo"
             value={broadcastMessage}
@@ -444,62 +649,62 @@ export default function SystemConfig() {
           />
         </ConfigSection>
 
-        {/* Data Management & Quick Actions */}
-        <ConfigSection title="💾 Quản lý dữ liệu & Thao tác">
+        {/* Quick Actions */}
+        <ConfigSection
+          title={
+            <>
+              <Text style={{ fontWeight: "bold" }}>⚡ Thao tác nhanh</Text>
+            </>
+          }
+        >
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
             <ActionButton
               title="Sao lưu dữ liệu"
               onPress={handleBackupData}
-              style={styles.backupButton}
+              style={styles.quickActionButton}
               icon="🗄️"
             />
             <ActionButton
               title="Xuất dữ liệu"
               onPress={handleExportData}
-              style={styles.exportButton}
+              style={styles.quickActionButton}
               icon="📤"
             />
             <ActionButton
               title="Import Users"
-              onPress={() => router.push("/AdminImport")}
-              style={styles.importButton}
+              onPress={() => router.push("/(admin)/AdminImport")}
+              style={styles.quickActionButton}
               icon="📥"
               testID="import-users-btn"
             />
             <ActionButton
               title="Kiểm tra hệ thống"
-              onPress={() =>
-                Alert.alert("Thông báo", "Hệ thống đang hoạt động bình thường")
-              }
-              style={styles.checkButton}
+              onPress={handleSystemHealthCheck}
+              style={styles.quickActionButton}
               icon="🔍"
               testID="check-btn"
             />
+            <ActionButton
+              title="Đăng xuất"
+              onPress={() => {
+                Alert.alert(
+                  "Xác nhận đăng xuất",
+                  "Bạn có chắc muốn đăng xuất khỏi hệ thống?",
+                  [
+                    { text: "Hủy", style: "cancel" },
+                    {
+                      text: "Đăng xuất",
+                      style: "destructive",
+                      onPress: () => signOut(),
+                    },
+                  ]
+                );
+              }}
+              style={styles.logoutButton}
+              icon="🚪"
+              testID="logout-btn"
+            />
           </View>
-        </ConfigSection>
-
-        {/* Logout Section */}
-        <ConfigSection title="🚪 Thoát hệ thống">
-          <ActionButton
-            title="Đăng xuất"
-            onPress={() => {
-              Alert.alert(
-                "Xác nhận đăng xuất",
-                "Bạn có chắc muốn đăng xuất khỏi hệ thống?",
-                [
-                  { text: "Hủy", style: "cancel" },
-                  {
-                    text: "Đăng xuất",
-                    style: "destructive",
-                    onPress: () => router.replace("/Login"),
-                  },
-                ]
-              );
-            }}
-            style={styles.logoutButton}
-            icon="🚪"
-            testID="logout-btn"
-          />
         </ConfigSection>
       </ScrollView>
     </>
@@ -511,10 +716,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: MedicalColors.backgroundSecondary,
   },
+  successMsg: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#27AE60" + "20",
+    padding: 12,
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: "#27AE60",
+  },
   header: {
     backgroundColor: MedicalColors.primary,
     paddingTop: 60,
-    paddingBottom: 30,
+    paddingBottom: 20,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
@@ -549,6 +765,83 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  profileContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  profileAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: MedicalColors.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  profileAvatarText: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#FFFFFF",
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: MedicalColors.textPrimary,
+    marginBottom: 4,
+  },
+  profileRole: {
+    fontSize: 14,
+    color: MedicalColors.primary,
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  profileEmail: {
+    fontSize: 13,
+    color: MedicalColors.textSecondary,
+    marginBottom: 2,
+  },
+  profilePhone: {
+    fontSize: 13,
+    color: MedicalColors.textSecondary,
+  },
+  profileStats: {
+    flexDirection: "row",
+    marginBottom: 16,
+  },
+  profileStat: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 8,
+    backgroundColor: MedicalColors.backgroundSecondary,
+    borderRadius: 8,
+    marginHorizontal: 4,
+  },
+  profileStatLabel: {
+    fontSize: 12,
+    color: MedicalColors.textSecondary,
+    marginBottom: 4,
+  },
+  profileStatValue: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: MedicalColors.textPrimary,
+  },
+  editProfileBtn: {
+    backgroundColor: MedicalColors.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  editProfileBtnText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
   },
   inputGroup: {
     marginBottom: 12,
@@ -600,7 +893,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: 8,
     flex: 1,
-    minWidth: (width - 80) / 2,
+    minWidth: (width - 80) / 3,
   },
   actionButtonIcon: {
     fontSize: 14,
@@ -611,26 +904,33 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#FFFFFF",
   },
-  saveButton: {
-    backgroundColor: "#27AE60",
-  },
   broadcastButton: {
     backgroundColor: "#3498DB",
   },
-  backupButton: {
-    backgroundColor: "#9B59B6",
-  },
-  exportButton: {
-    backgroundColor: "#E67E22",
-  },
-  importButton: {
-    backgroundColor: "#2ECC71",
-  },
-  checkButton: {
-    backgroundColor: "#16A085",
+  quickActionButton: {
+    backgroundColor: "#3498DB",
   },
   logoutButton: {
     backgroundColor: "#E74C3C",
+  },
+  saveBtnBottom: {
+    position: "absolute",
+    bottom: 16,
+    right: 16,
+    backgroundColor: "#27AE60",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  saveBtnText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
   },
   loadingContainer: {
     flex: 1,

@@ -29,7 +29,10 @@ interface PasswordStrength {
 export default function ChangePassword() {
   const { userProfile } = useAuth();
   useEffect(() => {
-    if (userProfile && userProfile.role !== "administrator") {
+    if (
+      userProfile &&
+      !["administrator", "director", "manager"].includes(userProfile.role)
+    ) {
       router.replace("/Login");
     }
   }, [userProfile]);

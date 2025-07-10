@@ -17,51 +17,17 @@ import {
 import CustomHeader from "../../components/CustomHeader";
 import { MedicalColors, MedicalIcons } from "../../constants/Colors";
 import { useAuth } from "../../hooks/useAuth";
+import type { Medicine, MedicineUsage } from "../../services/medicineService";
+import {
+  addMedicine,
+  addMedicineUsage,
+  calculateMedicineStatus,
+  getMedicines,
+  getMedicineUsage,
+  updateStockQuantity,
+} from "../../services/medicineService";
 
 const { width } = Dimensions.get("window");
-
-interface Medicine {
-  id: string;
-  name: string;
-  genericName: string;
-  category: string;
-  manufacturer: string;
-  dosage: string;
-  form: string; // tablet, syrup, injection, etc.
-  stockQuantity: number;
-  minStockLevel: number;
-  maxStockLevel: number;
-  unit: string;
-  price: number;
-  expiryDate: string;
-  batchNumber: string;
-  status: "available" | "low_stock" | "out_of_stock" | "expired";
-  description?: string;
-  sideEffects?: string;
-  contraindications?: string;
-  storage?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface MedicineUsage {
-  id: string;
-  medicineId: string;
-  medicineName: string;
-  studentId: string;
-  studentName: string;
-  grade: string;
-  quantity: number;
-  dosage: string;
-  frequency: string;
-  duration: string;
-  prescribedBy: string;
-  givenBy: string;
-  reason: string;
-  usageDate: string;
-  status: "prescribed" | "dispensed" | "completed";
-  notes?: string;
-}
 
 export default function DrugManagement() {
   const [medicines, setMedicines] = useState<Medicine[]>([]);
@@ -124,126 +90,24 @@ export default function DrugManagement() {
   });
 
   useEffect(() => {
-    if (userProfile && userProfile.role !== "administrator") {
+    if (
+      userProfile &&
+      !["administrator", "director", "manager"].includes(userProfile.role)
+    ) {
       router.replace("/Login");
     }
   }, [userProfile]);
 
-  // Mock data
-  const mockMedicines: Medicine[] = [
-    {
-      id: "1",
-      name: "Paracetamol",
-      genericName: "Acetaminophen",
-      category: "analgesic",
-      manufacturer: "Traphaco",
-      dosage: "500mg",
-      form: "tablet",
-      stockQuantity: 150,
-      minStockLevel: 50,
-      maxStockLevel: 500,
-      unit: "viên",
-      price: 500,
-      expiryDate: "2025-12-31",
-      batchNumber: "PCT-2024-001",
-      status: "available",
-      description: "Thuốc giảm đau, hạ sốt",
-      sideEffects: "Ít tác dụng phụ khi dùng đúng liều",
-      contraindications: "Không dùng cho người dị ứng với paracetamol",
-      storage: "Nơi khô ráo, thoáng mát",
-      createdAt: "2024-01-01",
-      updatedAt: "2024-01-15",
-    },
-    {
-      id: "2",
-      name: "Betadine",
-      genericName: "Povidone Iodine",
-      category: "antiseptic",
-      manufacturer: "Mundipharma",
-      dosage: "10%",
-      form: "solution",
-      stockQuantity: 25,
-      minStockLevel: 30,
-      maxStockLevel: 100,
-      unit: "chai",
-      price: 35000,
-      expiryDate: "2025-06-30",
-      batchNumber: "BET-2024-002",
-      status: "low_stock",
-      description: "Dung dịch sát khuẩn",
-      sideEffects: "Có thể gây kích ứng da nhẹ",
-      contraindications: "Không dùng cho người dị ứng iodine",
-      storage: "Tránh ánh sáng trực tiếp",
-      createdAt: "2024-01-02",
-      updatedAt: "2024-01-16",
-    },
-    {
-      id: "3",
-      name: "Vitamin C",
-      genericName: "Ascorbic Acid",
-      category: "vitamin",
-      manufacturer: "Dhg Pharma",
-      dosage: "1000mg",
-      form: "tablet",
-      stockQuantity: 0,
-      minStockLevel: 100,
-      maxStockLevel: 1000,
-      unit: "viên",
-      price: 200,
-      expiryDate: "2024-03-31",
-      batchNumber: "VTC-2023-003",
-      status: "out_of_stock",
-      description: "Vitamin C tăng cường sức đề kháng",
-      sideEffects: "Có thể gây rối loạn tiêu hóa khi dùng quá liều",
-      contraindications: "Không dùng cho người sỏi thận",
-      storage: "Nơi khô ráo, nhiệt độ thường",
-      createdAt: "2024-01-03",
-      updatedAt: "2024-01-17",
-    },
-  ];
-
-  const mockUsageHistory: MedicineUsage[] = [
-    {
-      id: "1",
-      medicineId: "1",
-      medicineName: "Paracetamol",
-      studentId: "HS001",
-      studentName: "Nguyễn Văn An",
-      grade: "10A1",
-      quantity: 2,
-      dosage: "500mg",
-      frequency: "2 lần/ngày",
-      duration: "3 ngày",
-      prescribedBy: "Bác sĩ Lê Thị C",
-      givenBy: "Y tá Nguyễn Thị A",
-      reason: "Sốt cao",
-      usageDate: "2024-01-15",
-      status: "completed",
-      notes: "Đã hết sốt sau 2 ngày",
-    },
-    {
-      id: "2",
-      medicineId: "2",
-      medicineName: "Betadine",
-      studentId: "HS002",
-      studentName: "Trần Thị Bình",
-      grade: "11A2",
-      quantity: 1,
-      dosage: "10%",
-      frequency: "3 lần/ngày",
-      duration: "5 ngày",
-      prescribedBy: "Y tá Trần Văn B",
-      givenBy: "Y tá Trần Văn B",
-      reason: "Vết thương nhỏ",
-      usageDate: "2024-01-16",
-      status: "dispensed",
-      notes: "Rửa vết thương và băng bó",
-    },
-  ];
-
   useEffect(() => {
     loadData();
   }, []);
+
+  // Reset drug management state when user changes
+  useEffect(() => {
+    if (userProfile) {
+      loadData();
+    }
+  }, [userProfile?.uid]);
 
   useEffect(() => {
     // Filter medicines based on search query, status, and category
@@ -279,9 +143,14 @@ export default function DrugManagement() {
 
   const loadData = async () => {
     try {
-      setMedicines(mockMedicines);
-      setFilteredMedicines(mockMedicines);
-      setUsageHistory(mockUsageHistory);
+      const [medicinesData, usageData] = await Promise.all([
+        getMedicines(),
+        getMedicineUsage(),
+      ]);
+
+      setMedicines(medicinesData);
+      setFilteredMedicines(medicinesData);
+      setUsageHistory(usageData);
     } catch (error) {
       console.error("Error loading data:", error);
       Alert.alert("Lỗi", "Không thể tải dữ liệu thuốc");
@@ -343,7 +212,7 @@ export default function DrugManagement() {
     }
   };
 
-  const handleAddMedicine = () => {
+  const handleAddMedicine = async () => {
     if (
       !newMedicine.name ||
       !newMedicine.stockQuantity ||
@@ -354,23 +223,45 @@ export default function DrugManagement() {
       return;
     }
 
-    Alert.alert("Xác nhận", "Thêm thuốc mới vào kho?", [
-      { text: "Hủy", style: "cancel" },
-      {
-        text: "Thêm",
-        onPress: () => {
-          Alert.alert("Thành công", "Đã thêm thuốc mới vào kho");
-          setShowAddModal(false);
-          resetNewMedicineForm();
-        },
-      },
-    ]);
+    try {
+      const medicineData = {
+        name: newMedicine.name,
+        genericName: newMedicine.genericName || "",
+        category: newMedicine.category || "other",
+        manufacturer: newMedicine.manufacturer || "",
+        dosage: newMedicine.dosage || "",
+        form: newMedicine.form || "",
+        stockQuantity: parseInt(newMedicine.stockQuantity),
+        minStockLevel: parseInt(newMedicine.minStockLevel) || 0,
+        maxStockLevel: parseInt(newMedicine.maxStockLevel) || 1000,
+        unit: newMedicine.unit,
+        price: parseFloat(newMedicine.price) || 0,
+        expiryDate: newMedicine.expiryDate,
+        batchNumber: newMedicine.batchNumber || "",
+        description: newMedicine.description || "",
+        sideEffects: newMedicine.sideEffects || "",
+        contraindications: newMedicine.contraindications || "",
+        storage: newMedicine.storage || "",
+      };
+
+      const status = calculateMedicineStatus(medicineData);
+      await addMedicine({ ...medicineData, status });
+
+      Alert.alert("Thành công", "Đã thêm thuốc mới vào kho");
+      setShowAddModal(false);
+      resetNewMedicineForm();
+      loadData(); // Reload data
+    } catch (error) {
+      console.error("Error adding medicine:", error);
+      Alert.alert("Lỗi", "Không thể thêm thuốc. Vui lòng thử lại.");
+    }
   };
 
-  const handleAddUsage = () => {
+  const handleAddUsage = async () => {
     if (
       !newUsage.medicineId ||
       !newUsage.studentId ||
+      !newUsage.studentName ||
       !newUsage.quantity ||
       !newUsage.reason
     ) {
@@ -378,17 +269,53 @@ export default function DrugManagement() {
       return;
     }
 
-    Alert.alert("Xác nhận", "Ghi nhận việc sử dụng thuốc?", [
-      { text: "Hủy", style: "cancel" },
-      {
-        text: "Ghi nhận",
-        onPress: () => {
-          Alert.alert("Thành công", "Đã ghi nhận việc sử dụng thuốc");
-          setShowUsageModal(false);
-          resetNewUsageForm();
-        },
-      },
-    ]);
+    try {
+      // Find the medicine to get its name
+      const medicine = medicines.find((m) => m.id === newUsage.medicineId);
+      if (!medicine) {
+        Alert.alert("Lỗi", "Không tìm thấy thuốc với mã này");
+        return;
+      }
+
+      const usageData = {
+        medicineId: newUsage.medicineId,
+        medicineName: medicine.name,
+        studentId: newUsage.studentId,
+        studentName: newUsage.studentName,
+        grade: newUsage.grade || "",
+        quantity: parseInt(newUsage.quantity),
+        dosage: newUsage.dosage || "",
+        frequency: newUsage.frequency || "",
+        duration: newUsage.duration || "",
+        prescribedBy: newUsage.prescribedBy || "",
+        givenBy: userProfile?.fullName || "Admin",
+        reason: newUsage.reason,
+        usageDate: new Date().toISOString().split("T")[0],
+        status: "dispensed" as const,
+        notes: newUsage.notes || "",
+      };
+
+      await addMedicineUsage(usageData);
+
+      // Update medicine stock
+      const newStockQuantity =
+        medicine.stockQuantity - parseInt(newUsage.quantity);
+      if (newStockQuantity < 0) {
+        Alert.alert("Lỗi", "Số lượng thuốc trong kho không đủ");
+        return;
+      }
+
+      // Update stock in Firebase
+      await updateStockQuantity(medicine.id, newStockQuantity);
+
+      Alert.alert("Thành công", "Đã ghi nhận việc sử dụng thuốc");
+      setShowUsageModal(false);
+      resetNewUsageForm();
+      loadData(); // Reload data
+    } catch (error) {
+      console.error("Error adding usage:", error);
+      Alert.alert("Lỗi", "Không thể ghi nhận sử dụng thuốc. Vui lòng thử lại.");
+    }
   };
 
   const resetNewMedicineForm = () => {

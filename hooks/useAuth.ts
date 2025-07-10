@@ -19,7 +19,10 @@ export interface AuthState {
   loading: boolean;
   canAccess: boolean;
   accessReason?: string;
-  signOut: () => Promise<void>; // Thêm signOut function
+  signOut: () => Promise<void>;
+  hasPermission: (permission: string) => boolean;
+  canAccessFeature: (feature: string) => boolean;
+  isAdmin: () => boolean;
 }
 
 export function useAuth(): AuthState {
@@ -173,20 +176,69 @@ export function useAuth(): AuthState {
     return unsubscribe;
   }, []);
 
+  // Permission checking utilities
+  const hasPermission = (permission: string) => {
+    if (!userProfile) return false;
+    if (userProfile.permissions?.includes("*")) return true; // Admin has all permissions
+    return userProfile.permissions?.includes(permission) || false;
+  };
+
+  const canAccessFeature = (feature: string) => {
+    switch (feature) {
+      case "user_management":
+        return hasPermission("manage_users");
+      case "drug_management":
+        return hasPermission("manage_medicines");
+      case "medical_events":
+        return hasPermission("manage_events");
+      case "system_config":
+        return hasPermission("system_admin");
+      case "import_users":
+        return hasPermission("manage_users");
+      case "approve_requests":
+        return hasPermission("approve_requests");
+      case "view_reports":
+        return hasPermission("view_reports");
+      default:
+        return false;
+    }
+  };
+
+  const isAdmin = () => {
+    return userProfile?.role === "administrator";
+  };
+
+  const handleSignOut = async () => {
+    try {
+      // Clear all state first
+      setUser(null);
+      setUserProfile(null);
+      setCanAccess(false);
+      setAccessReason(undefined);
+
+      // Clear AsyncStorage
+      await AsyncStorage.removeItem("loginTime");
+
+      // Sign out from Firebase
+      await signOut(auth);
+
+      // Navigate to login
+      router.replace("/Login");
+    } catch (error) {
+      console.error("Error signing out:", error);
+      // Even if there's an error, try to navigate to login
+      router.replace("/Login");
+    }
+  };
+
   return {
     user,
     userProfile,
     loading,
     canAccess,
-    accessReason,
-    signOut: async () => {
-      try {
-        await signOut(auth);
-        await AsyncStorage.removeItem("loginTime");
-        router.replace("/Login");
-      } catch (error) {
-        console.error("Error signing out:", error);
-      }
-    },
+    hasPermission,
+    canAccessFeature,
+    isAdmin,
+    signOut: handleSignOut,
   };
 }

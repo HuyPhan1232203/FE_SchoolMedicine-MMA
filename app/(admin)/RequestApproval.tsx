@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Dimensions,
   FlatList,
@@ -16,23 +17,16 @@ import {
 import CustomHeader from "../../components/CustomHeader";
 import { MedicalColors, MedicalIcons } from "../../constants/Colors";
 import { useAuth } from "../../hooks/useAuth";
+import {
+  ApprovalRequest,
+  approveRequest,
+  getApprovalRequests,
+  getApprovalRequestStats,
+  initializeApprovalRequests,
+  rejectRequest,
+} from "../../services/approvalService";
 
 const { width } = Dimensions.get("window");
-
-interface ApprovalRequest {
-  id: string;
-  userId: string;
-  userEmail: string;
-  fullName: string;
-  phoneNumber: string;
-  requestedRole: "parent" | "medical_staff" | "administrator";
-  requestType: "registration" | "role_change" | "access_request";
-  reason: string;
-  submittedAt: string;
-  status: "pending" | "approved" | "rejected";
-  documents?: string[];
-  notes?: string;
-}
 
 interface RequestStats {
   total: number;
@@ -43,16 +37,12 @@ interface RequestStats {
 
 export default function RequestApproval() {
   const { userProfile } = useAuth();
-  useEffect(() => {
-    if (userProfile && userProfile.role !== "administrator") {
-      router.replace("/Login");
-    }
-  }, [userProfile]);
   const [requests, setRequests] = useState<ApprovalRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<ApprovalRequest[]>(
     []
   );
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] =
     useState<ApprovalRequest | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -65,81 +55,51 @@ export default function RequestApproval() {
   >("all");
   const [rejectReason, setRejectReason] = useState("");
   const [approvalNotes, setApprovalNotes] = useState("");
+  const [stats, setStats] = useState<RequestStats>({
+    total: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+  });
 
-  // Mock data - would come from backend
-  const mockRequests: ApprovalRequest[] = [
-    {
-      id: "1",
-      userId: "user1",
-      userEmail: "nguyenvanan@gmail.com",
-      fullName: "Nguyễn Văn An",
-      phoneNumber: "0901234567",
-      requestedRole: "parent",
-      requestType: "registration",
-      reason: "Đăng ký tài khoản để theo dõi sức khỏe con",
-      submittedAt: "15/12/2024 09:30",
-      status: "pending",
-      documents: ["CMND_front.jpg", "CMND_back.jpg"],
-    },
-    {
-      id: "2",
-      userId: "user2",
-      userEmail: "tranthilan@yahoo.com",
-      fullName: "Trần Thị Lan",
-      phoneNumber: "0912345678",
-      requestedRole: "medical_staff",
-      requestType: "role_change",
-      reason: "Chuyển từ phụ huynh sang cán bộ y tế",
-      submittedAt: "14/12/2024 14:20",
-      status: "pending",
-      documents: ["CV.pdf", "Certificate.jpg"],
-      notes: "Có kinh nghiệm 5 năm trong lĩnh vực y tế",
-    },
-    {
-      id: "3",
-      userId: "user3",
-      userEmail: "levancuong@hotmail.com",
-      fullName: "Lê Văn Cường",
-      phoneNumber: "0923456789",
-      requestedRole: "parent",
-      requestType: "registration",
-      reason: "Đăng ký tài khoản phụ huynh",
-      submittedAt: "13/12/2024 16:45",
-      status: "approved",
-      documents: ["CMND_front.jpg"],
-    },
-    {
-      id: "4",
-      userId: "user4",
-      userEmail: "phamthidung@gmail.com",
-      fullName: "Phạm Thị Dung",
-      phoneNumber: "0934567890",
-      requestedRole: "administrator",
-      requestType: "access_request",
-      reason: "Yêu cầu quyền quản trị hệ thống",
-      submittedAt: "12/12/2024 11:15",
-      status: "rejected",
-      documents: ["Authorization_letter.pdf"],
-      notes: "Không đủ quyền hạn để cấp quyền admin",
-    },
-    {
-      id: "5",
-      userId: "user5",
-      userEmail: "vothiphuong@yahoo.com",
-      fullName: "Võ Thị Phương",
-      phoneNumber: "0945678901",
-      requestedRole: "medical_staff",
-      requestType: "registration",
-      reason: "Đăng ký tài khoản cán bộ y tế",
-      submittedAt: "11/12/2024 10:30",
-      status: "pending",
-      documents: ["Medical_license.jpg", "ID_card.jpg"],
-    },
-  ];
+  useEffect(() => {
+    if (
+      userProfile &&
+      !["administrator", "director", "manager"].includes(userProfile.role)
+    ) {
+      router.replace("/Login");
+    }
+  }, [userProfile]);
 
   useEffect(() => {
     loadRequests();
   }, []);
+
+  // Reset request approval state when user changes
+  useEffect(() => {
+    if (userProfile) {
+      loadRequests();
+    }
+  }, [userProfile?.uid]);
+
+  const loadRequests = async () => {
+    try {
+      setLoading(true);
+      const [requestsData, statsData] = await Promise.all([
+        getApprovalRequests(),
+        getApprovalRequestStats(),
+      ]);
+
+      setRequests(requestsData);
+      setStats(statsData);
+    } catch (error) {
+      console.error("Error loading requests:", error);
+      Alert.alert("Lỗi", "Không thể tải danh sách yêu cầu");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   const filterRequests = () => {
     let filtered = requests;
@@ -160,19 +120,6 @@ export default function RequestApproval() {
   useEffect(() => {
     filterRequests();
   }, [statusFilter, typeFilter, requests]);
-
-  const loadRequests = async () => {
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      setRequests(mockRequests);
-    } catch (error) {
-      console.error("Error loading requests:", error);
-      Alert.alert("Lỗi", "Không thể tải danh sách yêu cầu");
-    } finally {
-      setRefreshing(false);
-    }
-  };
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -221,11 +168,11 @@ export default function RequestApproval() {
   const getTypeText = (type: string) => {
     switch (type) {
       case "registration":
-        return "Đăng ký tài khoản";
+        return "Đăng ký";
       case "role_change":
         return "Thay đổi vai trò";
       case "access_request":
-        return "Yêu cầu quyền truy cập";
+        return "Yêu cầu quyền";
       default:
         return "Không xác định";
     }
@@ -240,73 +187,84 @@ export default function RequestApproval() {
       case "administrator":
         return "Quản trị viên";
       default:
-        return "Người dùng";
+        return "Không xác định";
     }
   };
 
-  const getRequestStats = (): RequestStats => {
-    return {
-      total: requests.length,
-      pending: requests.filter((r) => r.status === "pending").length,
-      approved: requests.filter((r) => r.status === "approved").length,
-      rejected: requests.filter((r) => r.status === "rejected").length,
-    };
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return "N/A";
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
-  const handleApprove = () => {
-    if (!selectedRequest) return;
+  const handleApprove = async () => {
+    if (!selectedRequest || !userProfile) return;
 
-    Alert.alert(
-      "Xác nhận duyệt",
-      `Bạn có chắc chắn muốn duyệt yêu cầu của ${selectedRequest.fullName}?`,
-      [
-        { text: "Hủy", style: "cancel" },
-        {
-          text: "Duyệt",
-          onPress: () => {
-            // Update request status
-            const updatedRequests = requests.map((req) =>
-              req.id === selectedRequest.id
-                ? { ...req, status: "approved" as const, notes: approvalNotes }
-                : req
-            );
-            setRequests(updatedRequests);
-            setShowActionModal(false);
-            setApprovalNotes("");
-            Alert.alert("Thành công", "Đã duyệt yêu cầu thành công");
-          },
-        },
-      ]
-    );
+    try {
+      await approveRequest(
+        selectedRequest.id,
+        userProfile.fullName,
+        approvalNotes
+      );
+
+      Alert.alert("Thành công", "Đã phê duyệt yêu cầu");
+      setShowActionModal(false);
+      setApprovalNotes("");
+      loadRequests(); // Reload data
+    } catch (error) {
+      console.error("Error approving request:", error);
+      Alert.alert("Lỗi", "Không thể phê duyệt yêu cầu");
+    }
   };
 
-  const handleReject = () => {
-    if (!selectedRequest) return;
+  const handleReject = async () => {
+    if (!selectedRequest || !userProfile) return;
 
     if (!rejectReason.trim()) {
       Alert.alert("Lỗi", "Vui lòng nhập lý do từ chối");
       return;
     }
 
+    try {
+      await rejectRequest(
+        selectedRequest.id,
+        userProfile.fullName,
+        rejectReason
+      );
+
+      Alert.alert("Thành công", "Đã từ chối yêu cầu");
+      setShowActionModal(false);
+      setRejectReason("");
+      loadRequests(); // Reload data
+    } catch (error) {
+      console.error("Error rejecting request:", error);
+      Alert.alert("Lỗi", "Không thể từ chối yêu cầu");
+    }
+  };
+
+  const handleInitializeData = async () => {
     Alert.alert(
-      "Xác nhận từ chối",
-      `Bạn có chắc chắn muốn từ chối yêu cầu của ${selectedRequest.fullName}?`,
+      "Khởi tạo dữ liệu",
+      "Bạn có muốn tạo dữ liệu mẫu cho yêu cầu phê duyệt?",
       [
         { text: "Hủy", style: "cancel" },
         {
-          text: "Từ chối",
-          style: "destructive",
-          onPress: () => {
-            // Update request status
-            const updatedRequests = requests.map((req) =>
-              req.id === selectedRequest.id
-                ? { ...req, status: "rejected" as const, notes: rejectReason }
-                : req
-            );
-            setRequests(updatedRequests);
-            setShowActionModal(false);
-            setRejectReason("");
-            Alert.alert("Thành công", "Đã từ chối yêu cầu");
+          text: "Khởi tạo",
+          onPress: async () => {
+            try {
+              await initializeApprovalRequests();
+              await loadRequests();
+              Alert.alert("Thành công", "Đã tạo dữ liệu mẫu");
+            } catch (error) {
+              console.error("Error initializing data:", error);
+              Alert.alert("Lỗi", "Không thể tạo dữ liệu mẫu");
+            }
           },
         },
       ]
@@ -387,7 +345,7 @@ export default function RequestApproval() {
         </View>
         <View style={styles.requestDetail}>
           <Text style={styles.detailLabel}>Ngày gửi:</Text>
-          <Text style={styles.detailValue}>{item.submittedAt}</Text>
+          <Text style={styles.detailValue}>{formatDate(item.submittedAt)}</Text>
         </View>
         <Text style={styles.requestReason} numberOfLines={2}>
           {item.reason}
@@ -413,8 +371,6 @@ export default function RequestApproval() {
     </TouchableOpacity>
   );
 
-  const stats = getRequestStats();
-
   return (
     <View style={styles.container}>
       <CustomHeader
@@ -424,289 +380,308 @@ export default function RequestApproval() {
         showBack={true}
         onBack={() => router.back()}
       />
-      {/* Stats */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{stats.total}</Text>
-          <Text style={styles.statLabel}>Tổng cộng</Text>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={MedicalColors.primary} />
+          <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
         </View>
-        <View style={styles.statCard}>
-          <Text style={[styles.statNumber, { color: MedicalColors.warning }]}>
-            {stats.pending}
-          </Text>
-          <Text style={styles.statLabel}>Chờ duyệt</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={[styles.statNumber, { color: MedicalColors.success }]}>
-            {stats.approved}
-          </Text>
-          <Text style={styles.statLabel}>Đã duyệt</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={[styles.statNumber, { color: MedicalColors.error }]}>
-            {stats.rejected}
-          </Text>
-          <Text style={styles.statLabel}>Từ chối</Text>
-        </View>
-      </View>
-
-      {/* Filters */}
-      <View style={styles.filterContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <FilterButton
-            title="Tất cả"
-            isActive={statusFilter === "all"}
-            onPress={() => setStatusFilter("all")}
-          />
-          <FilterButton
-            title="Chờ duyệt"
-            isActive={statusFilter === "pending"}
-            onPress={() => setStatusFilter("pending")}
-          />
-          <FilterButton
-            title="Đã duyệt"
-            isActive={statusFilter === "approved"}
-            onPress={() => setStatusFilter("approved")}
-          />
-          <FilterButton
-            title="Từ chối"
-            isActive={statusFilter === "rejected"}
-            onPress={() => setStatusFilter("rejected")}
-          />
-        </ScrollView>
-      </View>
-
-      {/* Requests List */}
-      <View style={styles.listSection}>
-        <Text style={styles.listSectionTitle}>
-          📋 Danh sách yêu cầu ({filteredRequests.length})
-        </Text>
-        <FlatList
-          data={filteredRequests}
-          renderItem={renderRequestItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContainer}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          showsVerticalScrollIndicator={false}
-          ListFooterComponent={() => <View style={{ height: 150 }} />}
-        />
-      </View>
-
-      {/* Request Detail Modal */}
-      <Modal
-        visible={showDetailModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowDetailModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Chi tiết yêu cầu</Text>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setShowDetailModal(false)}
-              >
-                <Text style={styles.closeButtonText}>×</Text>
-              </TouchableOpacity>
+      ) : (
+        <>
+          {/* Stats */}
+          <View style={styles.statsContainer}>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{stats.total}</Text>
+              <Text style={styles.statLabel}>Tổng cộng</Text>
             </View>
+            <View style={styles.statCard}>
+              <Text
+                style={[styles.statNumber, { color: MedicalColors.warning }]}
+              >
+                {stats.pending}
+              </Text>
+              <Text style={styles.statLabel}>Chờ duyệt</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text
+                style={[styles.statNumber, { color: MedicalColors.success }]}
+              >
+                {stats.approved}
+              </Text>
+              <Text style={styles.statLabel}>Đã duyệt</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={[styles.statNumber, { color: MedicalColors.error }]}>
+                {stats.rejected}
+              </Text>
+              <Text style={styles.statLabel}>Từ chối</Text>
+            </View>
+          </View>
 
-            <ScrollView style={styles.modalBody}>
-              {selectedRequest && (
-                <>
-                  <Text style={styles.detailTitle}>
-                    {selectedRequest.fullName}
-                  </Text>
+          {/* Filters */}
+          <View style={styles.filterContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <FilterButton
+                title="Tất cả"
+                isActive={statusFilter === "all"}
+                onPress={() => setStatusFilter("all")}
+              />
+              <FilterButton
+                title="Chờ duyệt"
+                isActive={statusFilter === "pending"}
+                onPress={() => setStatusFilter("pending")}
+              />
+              <FilterButton
+                title="Đã duyệt"
+                isActive={statusFilter === "approved"}
+                onPress={() => setStatusFilter("approved")}
+              />
+              <FilterButton
+                title="Từ chối"
+                isActive={statusFilter === "rejected"}
+                onPress={() => setStatusFilter("rejected")}
+              />
+            </ScrollView>
+          </View>
 
-                  <View style={styles.detailSection}>
-                    <Text style={styles.detailSectionTitle}>
-                      Thông tin cơ bản
-                    </Text>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabelModal}>Email:</Text>
-                      <Text style={styles.detailValueModal}>
-                        {selectedRequest.userEmail}
-                      </Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabelModal}>
-                        Số điện thoại:
-                      </Text>
-                      <Text style={styles.detailValueModal}>
-                        {selectedRequest.phoneNumber}
-                      </Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabelModal}>Loại yêu cầu:</Text>
-                      <Text style={styles.detailValueModal}>
-                        {getTypeText(selectedRequest.requestType)}
-                      </Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabelModal}>
-                        Vai trò yêu cầu:
-                      </Text>
-                      <Text style={styles.detailValueModal}>
-                        {getRoleText(selectedRequest.requestedRole)}
-                      </Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabelModal}>Ngày gửi:</Text>
-                      <Text style={styles.detailValueModal}>
-                        {selectedRequest.submittedAt}
-                      </Text>
-                    </View>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabelModal}>Trạng thái:</Text>
-                      <Text
-                        style={[
-                          styles.detailValueModal,
-                          { color: getStatusColor(selectedRequest.status) },
-                        ]}
-                      >
-                        {getStatusText(selectedRequest.status)}
-                      </Text>
-                    </View>
-                  </View>
+          {/* Requests List */}
+          <View style={styles.listSection}>
+            <Text style={styles.listSectionTitle}>
+              📋 Danh sách yêu cầu ({filteredRequests.length})
+            </Text>
+            <FlatList
+              data={filteredRequests}
+              renderItem={renderRequestItem}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.listContainer}
+              refreshControl={
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+              }
+              showsVerticalScrollIndicator={false}
+              ListFooterComponent={() => <View style={{ height: 150 }} />}
+            />
+          </View>
 
-                  <View style={styles.detailSection}>
-                    <Text style={styles.detailSectionTitle}>Lý do yêu cầu</Text>
-                    <Text style={styles.detailText}>
-                      {selectedRequest.reason}
-                    </Text>
-                  </View>
+          {/* Request Detail Modal */}
+          <Modal
+            visible={showDetailModal}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={() => setShowDetailModal(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Chi tiết yêu cầu</Text>
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={() => setShowDetailModal(false)}
+                  >
+                    <Text style={styles.closeButtonText}>×</Text>
+                  </TouchableOpacity>
+                </View>
 
-                  {selectedRequest.documents &&
-                    selectedRequest.documents.length > 0 && (
+                <ScrollView style={styles.modalBody}>
+                  {selectedRequest && (
+                    <>
+                      <Text style={styles.detailTitle}>
+                        {selectedRequest.fullName}
+                      </Text>
+
                       <View style={styles.detailSection}>
                         <Text style={styles.detailSectionTitle}>
-                          Tài liệu đính kèm
+                          Thông tin cơ bản
                         </Text>
-                        {selectedRequest.documents.map((doc, index) => (
-                          <Text key={index} style={styles.documentItem}>
-                            📎 {doc}
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabelModal}>Email:</Text>
+                          <Text style={styles.detailValueModal}>
+                            {selectedRequest.userEmail}
                           </Text>
-                        ))}
+                        </View>
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabelModal}>
+                            Số điện thoại:
+                          </Text>
+                          <Text style={styles.detailValueModal}>
+                            {selectedRequest.phoneNumber}
+                          </Text>
+                        </View>
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabelModal}>
+                            Loại yêu cầu:
+                          </Text>
+                          <Text style={styles.detailValueModal}>
+                            {getTypeText(selectedRequest.requestType)}
+                          </Text>
+                        </View>
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabelModal}>
+                            Vai trò yêu cầu:
+                          </Text>
+                          <Text style={styles.detailValueModal}>
+                            {getRoleText(selectedRequest.requestedRole)}
+                          </Text>
+                        </View>
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabelModal}>Ngày gửi:</Text>
+                          <Text style={styles.detailValueModal}>
+                            {formatDate(selectedRequest.submittedAt)}
+                          </Text>
+                        </View>
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabelModal}>
+                            Trạng thái:
+                          </Text>
+                          <Text
+                            style={[
+                              styles.detailValueModal,
+                              { color: getStatusColor(selectedRequest.status) },
+                            ]}
+                          >
+                            {getStatusText(selectedRequest.status)}
+                          </Text>
+                        </View>
                       </View>
-                    )}
 
-                  {selectedRequest.notes && (
-                    <View style={styles.detailSection}>
-                      <Text style={styles.detailSectionTitle}>Ghi chú</Text>
-                      <Text style={styles.detailText}>
-                        {selectedRequest.notes}
-                      </Text>
-                    </View>
+                      <View style={styles.detailSection}>
+                        <Text style={styles.detailSectionTitle}>
+                          Lý do yêu cầu
+                        </Text>
+                        <Text style={styles.detailText}>
+                          {selectedRequest.reason}
+                        </Text>
+                      </View>
+
+                      {selectedRequest.documents &&
+                        selectedRequest.documents.length > 0 && (
+                          <View style={styles.detailSection}>
+                            <Text style={styles.detailSectionTitle}>
+                              Tài liệu đính kèm
+                            </Text>
+                            {selectedRequest.documents.map((doc, index) => (
+                              <Text key={index} style={styles.documentItem}>
+                                📎 {doc}
+                              </Text>
+                            ))}
+                          </View>
+                        )}
+
+                      {selectedRequest.notes && (
+                        <View style={styles.detailSection}>
+                          <Text style={styles.detailSectionTitle}>Ghi chú</Text>
+                          <Text style={styles.detailText}>
+                            {selectedRequest.notes}
+                          </Text>
+                        </View>
+                      )}
+                    </>
                   )}
-                </>
-              )}
-            </ScrollView>
+                </ScrollView>
 
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setShowDetailModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Đóng</Text>
-              </TouchableOpacity>
-              {selectedRequest?.status === "pending" && (
-                <TouchableOpacity
-                  style={styles.confirmButton}
-                  onPress={() => {
-                    setShowDetailModal(false);
-                    openActionModal(selectedRequest);
-                  }}
-                >
-                  <Text style={styles.confirmButtonText}>Xử lý</Text>
-                </TouchableOpacity>
-              )}
+                <View style={styles.modalFooter}>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => setShowDetailModal(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>Đóng</Text>
+                  </TouchableOpacity>
+                  {selectedRequest?.status === "pending" && (
+                    <TouchableOpacity
+                      style={styles.confirmButton}
+                      onPress={() => {
+                        setShowDetailModal(false);
+                        openActionModal(selectedRequest);
+                      }}
+                    >
+                      <Text style={styles.confirmButtonText}>Xử lý</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
             </View>
-          </View>
-        </View>
-      </Modal>
+          </Modal>
 
-      {/* Action Modal */}
-      <Modal
-        visible={showActionModal}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setShowActionModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Xử lý yêu cầu</Text>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setShowActionModal(false)}
-              >
-                <Text style={styles.closeButtonText}>×</Text>
-              </TouchableOpacity>
+          {/* Action Modal */}
+          <Modal
+            visible={showActionModal}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={() => setShowActionModal(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <Text style={styles.modalTitle}>Xử lý yêu cầu</Text>
+                  <TouchableOpacity
+                    style={styles.closeButton}
+                    onPress={() => setShowActionModal(false)}
+                  >
+                    <Text style={styles.closeButtonText}>×</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView style={styles.modalBody}>
+                  {selectedRequest && (
+                    <>
+                      <Text style={styles.detailTitle}>
+                        Yêu cầu của {selectedRequest.fullName}
+                      </Text>
+
+                      <View style={styles.actionSection}>
+                        <Text style={styles.actionSectionTitle}>
+                          Ghi chú (tùy chọn)
+                        </Text>
+                        <TextInput
+                          style={styles.actionInput}
+                          value={approvalNotes}
+                          onChangeText={setApprovalNotes}
+                          placeholder="Nhập ghi chú khi duyệt..."
+                          multiline
+                          numberOfLines={3}
+                        />
+                      </View>
+
+                      <View style={styles.actionSection}>
+                        <Text style={styles.actionSectionTitle}>
+                          Lý do từ chối (nếu từ chối)
+                        </Text>
+                        <TextInput
+                          style={styles.actionInput}
+                          value={rejectReason}
+                          onChangeText={setRejectReason}
+                          placeholder="Nhập lý do từ chối..."
+                          multiline
+                          numberOfLines={3}
+                        />
+                      </View>
+                    </>
+                  )}
+                </ScrollView>
+
+                <View style={styles.modalFooter}>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => setShowActionModal(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>Hủy</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.rejectButton]}
+                    onPress={handleReject}
+                  >
+                    <Text style={styles.rejectButtonText}>Từ chối</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.approveButton]}
+                    onPress={handleApprove}
+                  >
+                    <Text style={styles.approveButtonText}>Duyệt</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
-
-            <ScrollView style={styles.modalBody}>
-              {selectedRequest && (
-                <>
-                  <Text style={styles.detailTitle}>
-                    Yêu cầu của {selectedRequest.fullName}
-                  </Text>
-
-                  <View style={styles.actionSection}>
-                    <Text style={styles.actionSectionTitle}>
-                      Ghi chú (tùy chọn)
-                    </Text>
-                    <TextInput
-                      style={styles.actionInput}
-                      value={approvalNotes}
-                      onChangeText={setApprovalNotes}
-                      placeholder="Nhập ghi chú khi duyệt..."
-                      multiline
-                      numberOfLines={3}
-                    />
-                  </View>
-
-                  <View style={styles.actionSection}>
-                    <Text style={styles.actionSectionTitle}>
-                      Lý do từ chối (nếu từ chối)
-                    </Text>
-                    <TextInput
-                      style={styles.actionInput}
-                      value={rejectReason}
-                      onChangeText={setRejectReason}
-                      placeholder="Nhập lý do từ chối..."
-                      multiline
-                      numberOfLines={3}
-                    />
-                  </View>
-                </>
-              )}
-            </ScrollView>
-
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={() => setShowActionModal(false)}
-              >
-                <Text style={styles.cancelButtonText}>Hủy</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.rejectButton]}
-                onPress={handleReject}
-              >
-                <Text style={styles.rejectButtonText}>Từ chối</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.approveButton]}
-                onPress={handleApprove}
-              >
-                <Text style={styles.approveButtonText}>Duyệt</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+          </Modal>
+        </>
+      )}
     </View>
   );
 }
@@ -1053,5 +1028,16 @@ const styles = StyleSheet.create({
     color: MedicalColors.textPrimary,
     marginHorizontal: 16,
     marginBottom: 6,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: MedicalColors.background,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: MedicalColors.textSecondary,
   },
 });

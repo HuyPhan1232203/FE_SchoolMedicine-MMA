@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Dimensions,
   Modal,
@@ -13,150 +14,66 @@ import {
 import CustomHeader from "../../components/CustomHeader";
 import { MedicalColors, MedicalIcons } from "../../constants/Colors";
 import { useAuth } from "../../hooks/useAuth";
+import {
+  ImportHistory,
+  ImportTemplate,
+  getImportHistory,
+  getImportTemplates,
+  initializeImportHistory,
+  processCSVData,
+} from "../../services/importService";
 
 const { width } = Dimensions.get("window");
 
-interface ImportTemplate {
-  id: string;
-  name: string;
-  description: string;
-  fields: string[];
-  example: string;
-  icon: string;
-}
-
-interface ImportHistory {
-  id: string;
-  fileName: string;
-  type: string;
-  records: number;
-  success: number;
-  failed: number;
-  date: string;
-  status: "completed" | "processing" | "failed";
-}
-
 export default function AdminImport() {
   const { userProfile } = useAuth();
-  useEffect(() => {
-    if (userProfile && userProfile.role !== "administrator") {
-      router.replace("/Login");
-    }
-  }, [userProfile]);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [selectedTemplate, setSelectedTemplate] =
     useState<ImportTemplate | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [importTemplates, setImportTemplates] = useState<ImportTemplate[]>([]);
+  const [importHistory, setImportHistory] = useState<ImportHistory[]>([]);
 
-  // Mock data - would come from backend
-  const importTemplates: ImportTemplate[] = [
-    {
-      id: "1",
-      name: "Danh sách học sinh",
-      description: "Import danh sách học sinh từ file Excel/CSV",
-      fields: [
-        "Mã học sinh",
-        "Họ tên",
-        "Lớp",
-        "Ngày sinh",
-        "Giới tính",
-        "Số điện thoại phụ huynh",
-      ],
-      example: "HS001,Nguyễn Văn An,10A1,15/03/2008,Nam,0901234567",
-      icon: "👨‍🎓",
-    },
-    {
-      id: "2",
-      name: "Danh sách phụ huynh",
-      description: "Import thông tin phụ huynh và liên kết với học sinh",
-      fields: [
-        "Email",
-        "Họ tên",
-        "Số điện thoại",
-        "Địa chỉ",
-        "Mã học sinh con",
-      ],
-      example:
-        "nguyenvanan@gmail.com,Nguyễn Văn An,0901234567,123 Đường ABC,HS001",
-      icon: "👨‍👩‍👧‍👦",
-    },
-    {
-      id: "3",
-      name: "Danh sách cán bộ y tế",
-      description: "Import thông tin cán bộ y tế nhà trường",
-      fields: ["Email", "Họ tên", "Chức vụ", "Số điện thoại", "Chuyên môn"],
-      example:
-        "bacsilan@school.edu.vn,Nguyễn Thị Lan,Bác sĩ,0912345678,Nhi khoa",
-      icon: "👩‍⚕️",
-    },
-    {
-      id: "4",
-      name: "Lịch tiêm chủng",
-      description: "Import lịch tiêm chủng cho học sinh",
-      fields: ["Mã học sinh", "Tên vaccine", "Ngày tiêm", "Liều số", "Ghi chú"],
-      example: "HS001,COVID-19,15/01/2024,1,Liều đầu tiên",
-      icon: "💉",
-    },
-    {
-      id: "5",
-      name: "Hồ sơ sức khỏe",
-      description: "Import hồ sơ khám sức khỏe định kỳ",
-      fields: [
-        "Mã học sinh",
-        "Ngày khám",
-        "Chiều cao",
-        "Cân nặng",
-        "Tình trạng sức khỏe",
-      ],
-      example: "HS001,20/12/2024,165,55,Khỏe mạnh",
-      icon: "📋",
-    },
-  ];
+  useEffect(() => {
+    if (
+      userProfile &&
+      !["administrator", "director", "manager"].includes(userProfile.role)
+    ) {
+      router.replace("/Login");
+    }
+  }, [userProfile]);
 
-  const importHistory: ImportHistory[] = [
-    {
-      id: "1",
-      fileName: "danh_sach_hoc_sinh_2024.xlsx",
-      type: "Danh sách học sinh",
-      records: 350,
-      success: 348,
-      failed: 2,
-      date: "15/12/2024 09:30",
-      status: "completed",
-    },
-    {
-      id: "2",
-      fileName: "phu_huynh_quy_1.csv",
-      type: "Danh sách phụ huynh",
-      records: 280,
-      success: 275,
-      failed: 5,
-      date: "14/12/2024 14:20",
-      status: "completed",
-    },
-    {
-      id: "3",
-      fileName: "lich_tiem_chung.xlsx",
-      type: "Lịch tiêm chủng",
-      records: 150,
-      success: 0,
-      failed: 150,
-      date: "13/12/2024 16:45",
-      status: "failed",
-    },
-    {
-      id: "4",
-      fileName: "ho_so_suc_khoe.xlsx",
-      type: "Hồ sơ sức khỏe",
-      records: 200,
-      success: 200,
-      failed: 0,
-      date: "12/12/2024 11:15",
-      status: "completed",
-    },
-  ];
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  // Reset admin import state when user changes
+  useEffect(() => {
+    if (userProfile) {
+      loadData();
+    }
+  }, [userProfile?.uid]);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [templates, history] = await Promise.all([
+        Promise.resolve(getImportTemplates()),
+        getImportHistory(),
+      ]);
+
+      setImportTemplates(templates);
+      setImportHistory(history);
+    } catch (error) {
+      console.error("Error loading import data:", error);
+      Alert.alert("Lỗi", "Không thể tải dữ liệu import");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -197,31 +114,81 @@ export default function AdminImport() {
     }
   };
 
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return "N/A";
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   const handleTemplateSelect = (template: ImportTemplate) => {
     setSelectedTemplate(template);
     setShowTemplateModal(true);
   };
 
-  const handleUpload = () => {
-    if (!selectedTemplate) return;
+  const handleUpload = async () => {
+    if (!selectedTemplate || !userProfile) return;
 
     setIsUploading(true);
     setUploadProgress(0);
 
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsUploading(false);
-          setShowUploadModal(false);
-          setShowTemplateModal(false);
-          Alert.alert("Thành công", "File đã được import thành công!");
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 200);
+    try {
+      // Simulate file processing
+      const sampleCSV = selectedTemplate.example;
+
+      // Process the CSV data
+      const result = await processCSVData(
+        sampleCSV,
+        selectedTemplate,
+        userProfile.fullName
+      );
+
+      if (result.success) {
+        Alert.alert("Thành công", result.message);
+      } else {
+        Alert.alert("Hoàn thành", result.message);
+      }
+
+      setShowUploadModal(false);
+      setShowTemplateModal(false);
+      loadData(); // Reload data
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      Alert.alert("Lỗi", "Không thể xử lý file");
+    } finally {
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const handleInitializeData = async () => {
+    if (!userProfile) return;
+
+    Alert.alert(
+      "Khởi tạo dữ liệu",
+      "Bạn có muốn tạo dữ liệu mẫu cho lịch sử import?",
+      [
+        { text: "Hủy", style: "cancel" },
+        {
+          text: "Khởi tạo",
+          onPress: async () => {
+            try {
+              await initializeImportHistory(userProfile.fullName);
+              await loadData();
+              Alert.alert("Thành công", "Đã tạo dữ liệu mẫu");
+            } catch (error) {
+              console.error("Error initializing data:", error);
+              Alert.alert("Lỗi", "Không thể tạo dữ liệu mẫu");
+            }
+          },
+        },
+      ]
+    );
   };
 
   const downloadTemplate = (template: ImportTemplate) => {
@@ -248,126 +215,148 @@ export default function AdminImport() {
       />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Quick Stats */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{importHistory.length}</Text>
-            <Text style={styles.statLabel}>Lần import</Text>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={MedicalColors.primary} />
+            <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
           </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>
-              {importHistory.filter((h) => h.status === "completed").length}
-            </Text>
-            <Text style={styles.statLabel}>Thành công</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>
-              {importHistory.reduce((sum, h) => sum + h.success, 0)}
-            </Text>
-            <Text style={styles.statLabel}>Bản ghi</Text>
-          </View>
-        </View>
-
-        {/* Import Templates */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📋 Template import</Text>
-          <Text style={styles.sectionSubtitle}>
-            Chọn loại dữ liệu cần import
-          </Text>
-
-          {importTemplates.map((template) => (
-            <TouchableOpacity
-              key={template.id}
-              style={styles.templateCard}
-              onPress={() => handleTemplateSelect(template)}
-            >
-              <View style={styles.templateHeader}>
-                <Text style={styles.templateIcon}>{template.icon}</Text>
-                <View style={styles.templateInfo}>
-                  <Text style={styles.templateName}>{template.name}</Text>
-                  <Text style={styles.templateDescription}>
-                    {template.description}
-                  </Text>
-                </View>
-                <Text style={styles.templateArrow}>›</Text>
+        ) : (
+          <>
+            {/* Quick Stats */}
+            <View style={styles.statsContainer}>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>{importHistory.length}</Text>
+                <Text style={styles.statLabel}>Lần import</Text>
               </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Import History */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📊 Lịch sử import</Text>
-          <Text style={styles.sectionSubtitle}>Các lần import gần đây</Text>
-
-          {importHistory.map((history) => (
-            <View key={history.id} style={styles.historyCard}>
-              <View style={styles.historyHeader}>
-                <View style={styles.historyInfo}>
-                  <Text style={styles.historyFileName}>{history.fileName}</Text>
-                  <Text style={styles.historyType}>{history.type}</Text>
-                </View>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: getStatusColor(history.status) + "20" },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.statusText,
-                      { color: getStatusColor(history.status) },
-                    ]}
-                  >
-                    {getStatusIcon(history.status)}{" "}
-                    {getStatusText(history.status)}
-                  </Text>
-                </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>
+                  {importHistory.filter((h) => h.status === "completed").length}
+                </Text>
+                <Text style={styles.statLabel}>Thành công</Text>
               </View>
-
-              <View style={styles.historyDetails}>
-                <View style={styles.historyDetail}>
-                  <Text style={styles.detailLabel}>Tổng bản ghi:</Text>
-                  <Text style={styles.detailValue}>{history.records}</Text>
-                </View>
-                <View style={styles.historyDetail}>
-                  <Text
-                    style={[
-                      styles.detailLabel,
-                      { color: MedicalColors.success },
-                    ]}
-                  >
-                    Thành công:
-                  </Text>
-                  <Text
-                    style={[
-                      styles.detailValue,
-                      { color: MedicalColors.success },
-                    ]}
-                  >
-                    {history.success}
-                  </Text>
-                </View>
-                <View style={styles.historyDetail}>
-                  <Text
-                    style={[styles.detailLabel, { color: MedicalColors.error }]}
-                  >
-                    Thất bại:
-                  </Text>
-                  <Text
-                    style={[styles.detailValue, { color: MedicalColors.error }]}
-                  >
-                    {history.failed}
-                  </Text>
-                </View>
-                <View style={styles.historyDetail}>
-                  <Text style={styles.detailLabel}>Ngày import:</Text>
-                  <Text style={styles.detailValue}>{history.date}</Text>
-                </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>
+                  {importHistory.reduce((sum, h) => sum + h.success, 0)}
+                </Text>
+                <Text style={styles.statLabel}>Bản ghi</Text>
               </View>
             </View>
-          ))}
-        </View>
+
+            {/* Import Templates */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>📋 Template import</Text>
+              <Text style={styles.sectionSubtitle}>
+                Chọn loại dữ liệu cần import
+              </Text>
+
+              {importTemplates.map((template) => (
+                <TouchableOpacity
+                  key={template.id}
+                  style={styles.templateCard}
+                  onPress={() => handleTemplateSelect(template)}
+                >
+                  <View style={styles.templateHeader}>
+                    <Text style={styles.templateIcon}>{template.icon}</Text>
+                    <View style={styles.templateInfo}>
+                      <Text style={styles.templateName}>{template.name}</Text>
+                      <Text style={styles.templateDescription}>
+                        {template.description}
+                      </Text>
+                    </View>
+                    <Text style={styles.templateArrow}>›</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Import History */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>📊 Lịch sử import</Text>
+              <Text style={styles.sectionSubtitle}>Các lần import gần đây</Text>
+
+              {importHistory.map((history) => (
+                <View key={history.id} style={styles.historyCard}>
+                  <View style={styles.historyHeader}>
+                    <View style={styles.historyInfo}>
+                      <Text style={styles.historyFileName}>
+                        {history.fileName}
+                      </Text>
+                      <Text style={styles.historyType}>{history.type}</Text>
+                    </View>
+                    <View
+                      style={[
+                        styles.statusBadge,
+                        {
+                          backgroundColor:
+                            getStatusColor(history.status) + "20",
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.statusText,
+                          { color: getStatusColor(history.status) },
+                        ]}
+                      >
+                        {getStatusIcon(history.status)}{" "}
+                        {getStatusText(history.status)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.historyDetails}>
+                    <View style={styles.historyDetail}>
+                      <Text style={styles.detailLabel}>Tổng bản ghi:</Text>
+                      <Text style={styles.detailValue}>{history.records}</Text>
+                    </View>
+                    <View style={styles.historyDetail}>
+                      <Text
+                        style={[
+                          styles.detailLabel,
+                          { color: MedicalColors.success },
+                        ]}
+                      >
+                        Thành công:
+                      </Text>
+                      <Text
+                        style={[
+                          styles.detailValue,
+                          { color: MedicalColors.success },
+                        ]}
+                      >
+                        {history.success}
+                      </Text>
+                    </View>
+                    <View style={styles.historyDetail}>
+                      <Text
+                        style={[
+                          styles.detailLabel,
+                          { color: MedicalColors.error },
+                        ]}
+                      >
+                        Thất bại:
+                      </Text>
+                      <Text
+                        style={[
+                          styles.detailValue,
+                          { color: MedicalColors.error },
+                        ]}
+                      >
+                        {history.failed}
+                      </Text>
+                    </View>
+                    <View style={styles.historyDetail}>
+                      <Text style={styles.detailLabel}>Ngày import:</Text>
+                      <Text style={styles.detailValue}>
+                        {formatDate(history.date)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </>
+        )}
       </ScrollView>
 
       {/* Template Detail Modal */}
@@ -571,6 +560,17 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: MedicalColors.textSecondary,
   },
   statsContainer: {
     flexDirection: "row",

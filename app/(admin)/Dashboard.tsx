@@ -62,12 +62,20 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const { userProfile } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
+  const [activeTab, setActiveTab] = useState("users");
 
   useEffect(() => {
     if (userProfile && userProfile.role !== "administrator") {
       router.replace("/Login");
     }
   }, [userProfile]);
+
+  // Reset dashboard state when user changes
+  useEffect(() => {
+    if (userProfile) {
+      loadDashboardData();
+    }
+  }, [userProfile?.uid]);
 
   const loadDashboardData = async () => {
     try {
@@ -116,7 +124,7 @@ export default function Dashboard() {
       const recentEvents = medicalEvents
         .sort(
           (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            b.createdAt.toDate().getTime() - a.createdAt.toDate().getTime()
         )
         .slice(0, 5);
 
@@ -324,7 +332,7 @@ export default function Dashboard() {
       >
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 120 }}
+          contentContainerStyle={{ paddingBottom: 20 }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
@@ -588,14 +596,21 @@ export default function Dashboard() {
                     alignItems: "center",
                     paddingVertical: 8,
                     borderBottomWidth: 2,
-                    borderBottomColor: MedicalColors.primary,
+                    borderBottomColor:
+                      activeTab === "users"
+                        ? MedicalColors.primary
+                        : "transparent",
                   }}
+                  onPress={() => setActiveTab("users")}
                 >
                   <Text
                     style={{
                       fontSize: 14,
                       fontWeight: "600",
-                      color: MedicalColors.primary,
+                      color:
+                        activeTab === "users"
+                          ? MedicalColors.primary
+                          : MedicalColors.textSecondary,
                     }}
                   >
                     Người dùng mới ({stats.recentUsers.length})
@@ -607,14 +622,21 @@ export default function Dashboard() {
                     alignItems: "center",
                     paddingVertical: 8,
                     borderBottomWidth: 2,
-                    borderBottomColor: "transparent",
+                    borderBottomColor:
+                      activeTab === "events"
+                        ? MedicalColors.primary
+                        : "transparent",
                   }}
+                  onPress={() => setActiveTab("events")}
                 >
                   <Text
                     style={{
                       fontSize: 14,
                       fontWeight: "600",
-                      color: MedicalColors.textSecondary,
+                      color:
+                        activeTab === "events"
+                          ? MedicalColors.primary
+                          : MedicalColors.textSecondary,
                     }}
                   >
                     Sự kiện Y tế ({stats.recentEvents.length})
@@ -622,86 +644,174 @@ export default function Dashboard() {
                 </TouchableOpacity>
               </View>
 
-              {stats.recentUsers.slice(0, 3).map((user) => (
-                <View
-                  key={user.uid}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    paddingVertical: 12,
-                    borderBottomWidth: 1,
-                    borderBottomColor: "#f5f5f5",
-                  }}
-                >
-                  <View
-                    style={{
-                      width: 32,
-                      height: 32,
-                      borderRadius: 16,
-                      backgroundColor: MedicalColors.primary + "20",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      marginRight: 12,
-                    }}
-                  >
-                    <Text style={{ fontSize: 16 }}>👤</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text
+              {activeTab === "users" ? (
+                <>
+                  {stats.recentUsers.map((user) => (
+                    <View
+                      key={user.uid}
                       style={{
-                        fontSize: 14,
-                        fontWeight: "600",
-                        color: MedicalColors.textPrimary,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        paddingVertical: 12,
+                        borderBottomWidth: 1,
+                        borderBottomColor: "#f5f5f5",
                       }}
                     >
-                      {user.fullName}
-                    </Text>
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        color: MedicalColors.textSecondary,
-                        marginTop: 2,
-                      }}
-                    >
-                      {user.role === UserRole.PARENT
-                        ? "Phụ huynh"
-                        : user.role === UserRole.MEDICAL_STAFF
-                        ? "Cán bộ Y tế"
-                        : "Quản trị viên"}{" "}
-                      • {formatDate(user.createdAt)}
-                    </Text>
-                  </View>
-                  <View
-                    style={{
-                      paddingHorizontal: 8,
-                      paddingVertical: 4,
-                      borderRadius: 8,
-                      backgroundColor:
-                        getStatusDisplayInfo(user.status).color + "20",
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontSize: 12,
-                        fontWeight: "600",
-                        color: getStatusDisplayInfo(user.status).color,
-                      }}
-                    >
-                      {getStatusDisplayInfo(user.status).icon}{" "}
-                      {getStatusDisplayInfo(user.status).name}
-                    </Text>
-                  </View>
-                </View>
-              ))}
+                      <View
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 16,
+                          backgroundColor: MedicalColors.primary + "20",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          marginRight: 12,
+                        }}
+                      >
+                        <Text style={{ fontSize: 16 }}>👤</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            fontWeight: "600",
+                            color: MedicalColors.textPrimary,
+                          }}
+                        >
+                          {user.fullName}
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            color: MedicalColors.textSecondary,
+                            marginTop: 2,
+                          }}
+                        >
+                          {user.role === UserRole.PARENT
+                            ? "Phụ huynh"
+                            : user.role === UserRole.MEDICAL_STAFF
+                            ? "Cán bộ Y tế"
+                            : "Quản trị viên"}{" "}
+                          • {formatDate(user.createdAt)}
+                        </Text>
+                      </View>
+                      <View
+                        style={{
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          borderRadius: 8,
+                          backgroundColor:
+                            getStatusDisplayInfo(user.status).color + "20",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            fontWeight: "600",
+                            color: getStatusDisplayInfo(user.status).color,
+                          }}
+                        >
+                          {getStatusDisplayInfo(user.status).icon}{" "}
+                          {getStatusDisplayInfo(user.status).name}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
 
-              {stats.recentUsers.length === 0 && (
-                <View style={{ alignItems: "center", paddingVertical: 20 }}>
-                  <Text
-                    style={{ fontSize: 16, color: MedicalColors.textSecondary }}
-                  >
-                    Chưa có người dùng mới
-                  </Text>
-                </View>
+                  {stats.recentUsers.length === 0 && (
+                    <View style={{ alignItems: "center", paddingVertical: 20 }}>
+                      <Text
+                        style={{
+                          fontSize: 16,
+                          color: MedicalColors.textSecondary,
+                        }}
+                      >
+                        Chưa có người dùng mới
+                      </Text>
+                    </View>
+                  )}
+                </>
+              ) : (
+                <>
+                  {stats.recentEvents.map((event) => (
+                    <View
+                      key={event.id}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        paddingVertical: 12,
+                        borderBottomWidth: 1,
+                        borderBottomColor: "#f5f5f5",
+                      }}
+                    >
+                      <View
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 16,
+                          backgroundColor: "#E74C3C" + "20",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          marginRight: 12,
+                        }}
+                      >
+                        <Text style={{ fontSize: 16 }}>🏥</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            fontWeight: "600",
+                            color: MedicalColors.textPrimary,
+                          }}
+                        >
+                          {event.title}
+                        </Text>
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            color: MedicalColors.textSecondary,
+                            marginTop: 2,
+                          }}
+                        >
+                          {event.description?.substring(0, 50)}... •{" "}
+                          {formatDate(event.createdAt)}
+                        </Text>
+                      </View>
+                      <View
+                        style={{
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          borderRadius: 8,
+                          backgroundColor: "#E74C3C" + "20",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 12,
+                            fontWeight: "600",
+                            color: "#E74C3C",
+                          }}
+                        >
+                          Sự kiện
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+
+                  {stats.recentEvents.length === 0 && (
+                    <View style={{ alignItems: "center", paddingVertical: 20 }}>
+                      <Text
+                        style={{
+                          fontSize: 16,
+                          color: MedicalColors.textSecondary,
+                        }}
+                      >
+                        Chưa có sự kiện y tế
+                      </Text>
+                    </View>
+                  )}
+                </>
               )}
             </View>
           </View>

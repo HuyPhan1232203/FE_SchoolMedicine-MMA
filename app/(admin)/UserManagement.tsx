@@ -81,6 +81,13 @@ export default function UserManagement() {
     loadUsers();
   }, []);
 
+  // Reset user management state when user changes
+  useEffect(() => {
+    if (userProfile) {
+      loadUsers();
+    }
+  }, [userProfile?.uid]);
+
   useEffect(() => {
     // Filter users based on search query, status, and role
     let filtered = users;
@@ -828,11 +835,11 @@ const styles = StyleSheet.create({
   },
   searchContainerCustom: {
     backgroundColor: "white",
-    borderRadius: 16,
+    borderRadius: 12,
     marginHorizontal: 20,
-    marginTop: -28,
-    marginBottom: 16,
-    padding: 8,
+    marginTop: -20,
+    marginBottom: 12,
+    padding: 6,
     shadowColor: MedicalColors.shadowLight,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -840,9 +847,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   searchInputCustom: {
-    fontSize: 16,
-    padding: 12,
-    borderRadius: 12,
+    fontSize: 14,
+    padding: 8,
+    borderRadius: 8,
     backgroundColor: MedicalColors.inputBackground,
     color: MedicalColors.textPrimary,
   },
@@ -873,6 +880,6 @@ const styles = StyleSheet.create({
   },
   listContainerCustom: {
     padding: 16,
-    paddingBottom: 120, // Để tránh bị che bởi bottom tab
+    paddingBottom: 20, // Để tránh bị che bởi bottom tab
   },
 });
