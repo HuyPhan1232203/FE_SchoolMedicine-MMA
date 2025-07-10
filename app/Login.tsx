@@ -82,9 +82,10 @@ export default function Login() {
 
       setSuccessMessage("Đăng nhập thành công! Đang chuyển hướng...");
 
-      setTimeout(() => {
-        router.replace("/(tabs)/Home");
-      }, 1000);
+      // Không redirect ở đây, để root layout tự điều hướng theo role
+      // setTimeout(() => {
+      //   router.replace("/(tabs)/Home");
+      // }, 1000);
     } catch (error: any) {
       console.error("Login error:", error);
       setErrorMessage(error.message);

@@ -135,11 +135,22 @@ export const updateUserStatus = async (
 export const updateLastLogin = async (uid: string): Promise<void> => {
   try {
     const userRef = doc(db, "users", uid);
-    await updateDoc(userRef, {
+
+    // Get current user data to check role
+    const userSnap = await getDoc(userRef);
+    const userData = userSnap.data();
+
+    const updateData: any = {
       lastLoginAt: Timestamp.now(),
-      status: UserStatus.ACTIVE, // Đánh dấu là đang hoạt động
       updatedAt: Timestamp.now(),
-    });
+    };
+
+    // Only update status to ACTIVE for non-admin users
+    if (userData && userData.role !== "administrator") {
+      updateData.status = UserStatus.ACTIVE;
+    }
+
+    await updateDoc(userRef, updateData);
   } catch (error) {
     console.error("Error updating last login:", error);
     throw error;
@@ -210,6 +221,7 @@ export const canUserAccess = (
       };
 
     case UserStatus.ACTIVE:
+    case UserStatus.APPROVED: // Thêm xử lý cho status APPROVED
       return {
         canAccess: true,
       };

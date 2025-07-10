@@ -338,7 +338,9 @@ export default function Dashboard() {
           }
         >
           {/* Main Stats */}
-          <View style={{ marginBottom: 20, paddingHorizontal: 16 }}>
+          <View
+            style={{ marginTop: 24, marginBottom: 20, paddingHorizontal: 16 }}
+          >
             <Text
               style={{
                 fontSize: 18,

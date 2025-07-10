@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Dimensions,
   RefreshControl,
@@ -52,6 +53,21 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const userRole = userProfile?.role || "parent";
   const router = useRouter();
+
+  useEffect(() => {
+    if (userProfile?.role === "administrator") {
+      router.replace("/(admin)/Dashboard");
+    }
+  }, [userProfile]);
+
+  if (userProfile?.role === "administrator") {
+    // Chỉ render loading, không render UI Home
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
   // Mock data - would come from backend
   const healthMetrics: HealthMetric[] = [

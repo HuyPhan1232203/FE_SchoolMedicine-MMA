@@ -1,5 +1,4 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router, usePathname } from "expo-router";
 import { onAuthStateChanged, signOut, User } from "firebase/auth";
 import { useEffect, useState } from "react";
 import { auth } from "../lib/firebase";
@@ -8,7 +7,6 @@ import {
   getUserProfile,
   updateLastLogin,
   UserProfile,
-  UserStatus,
 } from "../services/userService";
 
 const LOGIN_EXPIRY_MINUTES = 60;
@@ -31,17 +29,25 @@ export function useAuth(): AuthState {
   const [loading, setLoading] = useState(true);
   const [canAccess, setCanAccess] = useState(false);
   const [accessReason, setAccessReason] = useState<string>();
-  const pathname = usePathname();
 
   useEffect(() => {
-    // Use auth directly since it's already the Firebase Auth instance
+    console.log("🔄 useAuth useEffect triggered");
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
+      console.log(
+        "Firebase auth state changed:",
+        firebaseUser ? "User logged in" : "User logged out"
+      );
 
       if (firebaseUser) {
         try {
-          // Lấy user profile từ Firestore trước
+          // Lấy user profile từ Firestore
           const profile = await getUserProfile(firebaseUser.uid);
+          console.log(
+            "User profile loaded:",
+            profile ? "Success" : "Not found"
+          );
 
           if (!profile) {
             console.log("User profile not found");
@@ -49,22 +55,17 @@ export function useAuth(): AuthState {
             setUserProfile(null);
             setCanAccess(false);
             setAccessReason("Không tìm thấy thông tin tài khoản");
-            router.replace("/Register"); // Redirect to complete profile
             setLoading(false);
             return;
           }
 
           // Nếu không phải admin thì mới kiểm tra emailVerified
           if (!firebaseUser.emailVerified && profile.role !== "administrator") {
-            console.log("Email not verified");
+            console.log("Email not verified for non-admin user");
             setUser(null);
             setUserProfile(null);
             setCanAccess(false);
             setAccessReason("Email chưa được xác thực");
-            // Only redirect to EmailVerification if not already there
-            if (pathname !== "/EmailVerification") {
-              router.replace("/EmailVerification");
-            }
             setLoading(false);
             return;
           }
@@ -76,14 +77,13 @@ export function useAuth(): AuthState {
             const loginTime = parseInt(loginTimeStr, 10);
             const diffMinutes = (now - loginTime) / 60000;
             if (diffMinutes > LOGIN_EXPIRY_MINUTES) {
-              console.log("Login expired");
+              console.log("Login expired, signing out");
               await signOut(auth);
               await AsyncStorage.removeItem("loginTime");
               setUser(null);
               setUserProfile(null);
               setCanAccess(false);
               setAccessReason("Phiên đăng nhập đã hết hạn");
-              router.replace("/Login");
               setLoading(false);
               return;
             }
@@ -95,65 +95,19 @@ export function useAuth(): AuthState {
 
           // Check if user can access the system
           const accessCheck = canUserAccess(profile);
+          console.log("Access check result:", accessCheck);
 
           setUser(firebaseUser);
           setUserProfile(profile);
           setCanAccess(accessCheck.canAccess);
           setAccessReason(accessCheck.reason);
 
-          if (!accessCheck.canAccess) {
-            console.log("Access denied:", accessCheck.reason);
-            // Handle different redirect cases
-            if (profile.status === UserStatus.PENDING) {
-              // Create AccountPending screen later - for now go to login
-              router.replace("/Login");
-            } else if (
-              profile.status === UserStatus.REJECTED ||
-              profile.status === UserStatus.SUSPENDED
-            ) {
-              router.replace("/Login");
-            }
-            // else if (profile.mustChangePassword) {
-            //   // Redirect to change password screen
-            //   router.replace("/ChangePassword");
-            // }
-          } else if (accessCheck.canAccess) {
+          if (accessCheck.canAccess) {
             // Update last login time and set status to active
             await updateLastLogin(firebaseUser.uid);
-
-            // Log once to reduce spam
-            if (!user || user.uid !== firebaseUser.uid) {
-              console.log("User authenticated and can access system");
-            }
-
-            // Navigate based on user role - ONLY ONCE per login session
-            const currentPath = pathname;
-
-            if (profile.role === "administrator") {
-              // Admin users go to admin dashboard
-              if (
-                currentPath === "/Login" ||
-                currentPath === "/" ||
-                currentPath === "/index" ||
-                currentPath.startsWith("/(tabs)")
-              ) {
-                console.log("Redirecting admin to dashboard");
-                router.replace("/(admin)/Dashboard");
-              }
-              // If already in admin area, don't redirect
-            } else {
-              // Regular users go to main app
-              if (
-                currentPath === "/Login" ||
-                currentPath === "/" ||
-                currentPath === "/index" ||
-                currentPath.startsWith("/(admin)")
-              ) {
-                console.log("Redirecting user to main app");
-                router.replace("/(tabs)/Home");
-              }
-              // If already in user area, don't redirect
-            }
+            console.log("User authenticated and can access system");
+          } else {
+            console.log("Access denied:", accessCheck.reason);
           }
         } catch (error) {
           console.error("Error checking user status:", error);
@@ -164,6 +118,7 @@ export function useAuth(): AuthState {
         }
       } else {
         // User is signed out
+        console.log("User signed out");
         setUser(null);
         setUserProfile(null);
         setCanAccess(false);
@@ -210,6 +165,7 @@ export function useAuth(): AuthState {
 
   const handleSignOut = async () => {
     try {
+      console.log("Signing out user");
       // Clear all state first
       setUser(null);
       setUserProfile(null);
@@ -221,13 +177,8 @@ export function useAuth(): AuthState {
 
       // Sign out from Firebase
       await signOut(auth);
-
-      // Navigate to login
-      router.replace("/Login");
     } catch (error) {
       console.error("Error signing out:", error);
-      // Even if there's an error, try to navigate to login
-      router.replace("/Login");
     }
   };
 
@@ -236,6 +187,7 @@ export function useAuth(): AuthState {
     userProfile,
     loading,
     canAccess,
+    accessReason,
     hasPermission,
     canAccessFeature,
     isAdmin,

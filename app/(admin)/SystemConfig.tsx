@@ -1,4 +1,14 @@
+import * as FileSystem from "expo-file-system";
 import { router, Stack } from "expo-router";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  Timestamp,
+} from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import {
   Alert,
@@ -14,6 +24,7 @@ import {
 import CustomHeader from "../../components/CustomHeader";
 import { MedicalColors, MedicalIcons } from "../../constants/Colors";
 import { useAuth } from "../../hooks/useAuth";
+import { db } from "../../lib/firebase";
 
 const { width } = Dimensions.get("window");
 
@@ -28,6 +39,31 @@ const getRoleDisplayName = (role: string) => {
       return "Quản lý";
     default:
       return role;
+  }
+};
+
+const exportCollectionToCSV = async (
+  collectionName: string,
+  filename: string
+) => {
+  try {
+    const snapshot = await getDocs(collection(db, collectionName));
+    if (snapshot.empty) throw new Error("Không có dữ liệu để xuất");
+    const docs = snapshot.docs.map((doc) => doc.data());
+    const keys = Object.keys(docs[0]);
+    const csvRows = [keys.join(",")];
+    docs.forEach((obj) => {
+      const row = keys.map((k) => JSON.stringify(obj[k] ?? "")).join(",");
+      csvRows.push(row);
+    });
+    const csv = csvRows.join("\n");
+    const fileUri = FileSystem.cacheDirectory + filename;
+    await FileSystem.writeAsStringAsync(fileUri, csv, {
+      encoding: FileSystem.EncodingType.UTF8,
+    });
+    Alert.alert("Xuất dữ liệu", "Đã xuất file CSV: " + fileUri);
+  } catch (error) {
+    Alert.alert("Lỗi", "Không thể xuất dữ liệu: " + (error as any).message);
   }
 };
 
@@ -62,21 +98,22 @@ export default function SystemConfig() {
   const [successMsg, setSuccessMsg] = useState("");
   const { userProfile, signOut } = useAuth();
 
-  const loadSystemConfig = () => {
-    // In a real app, load config from Firestore
-    // For now, we'll just set default values
-    setNotificationSettings({
-      emailNotifications: true,
-      smsNotifications: false,
-      pushNotifications: true,
-      reminderNotifications: true,
-    });
-    setSystemSettings({
-      allowSelfRegistration: true,
-      requireEmailVerification: true,
-      autoApproveParents: false,
-      maintenanceMode: false,
-    });
+  // Firestore: load config
+  const loadSystemConfig = async () => {
+    try {
+      const configRef = doc(db, "config", "systemConfig");
+      const configSnap = await getDoc(configRef);
+      if (configSnap.exists()) {
+        const data = configSnap.data();
+        setSchoolInfo(data.schoolInfo || schoolInfo);
+        setNotificationSettings(
+          data.notificationSettings || notificationSettings
+        );
+        setSystemSettings(data.systemSettings || systemSettings);
+      }
+    } catch (error) {
+      Alert.alert("Lỗi", "Không thể tải cấu hình hệ thống");
+    }
   };
 
   useEffect(() => {
@@ -90,11 +127,12 @@ export default function SystemConfig() {
     }
   }, [userProfile?.uid]);
 
+  // Firestore: save school info
   const handleSaveSchoolInfo = async () => {
     setSaving(true);
     try {
-      // In real app, save to Firestore
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
+      const configRef = doc(db, "config", "systemConfig");
+      await setDoc(configRef, { schoolInfo }, { merge: true });
       setSchoolDirty(false);
       setSuccessMsg("Đã lưu thông tin trường học");
       setTimeout(() => setSuccessMsg(""), 3000);
@@ -105,11 +143,12 @@ export default function SystemConfig() {
     }
   };
 
+  // Firestore: save notification settings
   const handleSaveNotificationSettings = async () => {
     setSaving(true);
     try {
-      // In real app, save to Firestore
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
+      const configRef = doc(db, "config", "systemConfig");
+      await setDoc(configRef, { notificationSettings }, { merge: true });
       setNotificationDirty(false);
       setSuccessMsg("Đã lưu cài đặt thông báo");
       setTimeout(() => setSuccessMsg(""), 3000);
@@ -120,11 +159,12 @@ export default function SystemConfig() {
     }
   };
 
+  // Firestore: save system settings
   const handleSaveSystemSettings = async () => {
     setSaving(true);
     try {
-      // In real app, save to Firestore
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
+      const configRef = doc(db, "config", "systemConfig");
+      await setDoc(configRef, { systemSettings }, { merge: true });
       setSystemDirty(false);
       setSuccessMsg("Đã lưu cài đặt hệ thống");
       setTimeout(() => setSuccessMsg(""), 3000);
@@ -135,27 +175,23 @@ export default function SystemConfig() {
     }
   };
 
-  const handleSendBroadcast = () => {
+  const handleSendBroadcast = async () => {
     if (!broadcastMessage.trim()) {
       Alert.alert("Lỗi", "Vui lòng nhập nội dung thông báo");
       return;
     }
-
-    Alert.alert(
-      "Xác nhận gửi thông báo",
-      `Bạn có chắc muốn gửi thông báo này đến tất cả người dùng?\n\n"${broadcastMessage}"`,
-      [
-        { text: "Hủy", style: "cancel" },
-        {
-          text: "Gửi",
-          onPress: () => {
-            // In real app, send notification to all users
-            Alert.alert("Thành công", "Đã gửi thông báo đến tất cả người dùng");
-            setBroadcastMessage("");
-          },
-        },
-      ]
-    );
+    try {
+      await addDoc(collection(db, "broadcasts"), {
+        message: broadcastMessage,
+        createdAt: Timestamp.now(),
+        createdBy: userProfile?.uid || null,
+        createdByName: userProfile?.fullName || null,
+      });
+      Alert.alert("Thành công", "Đã gửi thông báo đến tất cả người dùng");
+      setBroadcastMessage("");
+    } catch (error) {
+      Alert.alert("Lỗi", "Không thể gửi thông báo. Vui lòng thử lại.");
+    }
   };
 
   const handleBackupData = () => {
@@ -180,22 +216,61 @@ export default function SystemConfig() {
       { text: "Hủy", style: "cancel" },
       {
         text: "Xuất Users",
-        onPress: () => Alert.alert("Thành công", "Đã xuất dữ liệu users"),
+        onPress: () => exportCollectionToCSV("users", "users.csv"),
       },
       {
         text: "Xuất Sự kiện Y tế",
         onPress: () =>
-          Alert.alert("Thành công", "Đã xuất dữ liệu sự kiện y tế"),
+          exportCollectionToCSV("medicalEvents", "medical_events.csv"),
       },
       {
         text: "Xuất tất cả",
-        onPress: () => Alert.alert("Thành công", "Đã xuất tất cả dữ liệu"),
+        onPress: async () => {
+          await exportCollectionToCSV("users", "users.csv");
+          await exportCollectionToCSV("medicalEvents", "medical_events.csv");
+        },
       },
     ]);
   };
 
-  const handleSystemHealthCheck = () => {
-    Alert.alert("Kiểm tra hệ thống", "Hệ thống đang hoạt động bình thường");
+  const handleSystemHealthCheck = async () => {
+    let results: string[] = [];
+
+    // 1. Kiểm tra đọc cấu hình
+    try {
+      const configRef = doc(db, "config", "systemConfig");
+      await getDoc(configRef);
+      results.push("✅ Đọc cấu hình Firestore: OK");
+    } catch {
+      results.push("❌ Đọc cấu hình Firestore: LỖI");
+    }
+
+    // 2. Kiểm tra quyền ghi Firestore
+    try {
+      const testRef = doc(db, "config", "healthCheckTest");
+      await setDoc(testRef, { test: true, time: Date.now() });
+      results.push("✅ Ghi Firestore: OK");
+    } catch {
+      results.push("❌ Ghi Firestore: LỖI");
+    }
+
+    // 3. Kiểm tra đọc users
+    try {
+      const usersSnap = await getDocs(collection(db, "users"));
+      results.push(`✅ Đọc users: OK (${usersSnap.size} bản ghi)`);
+    } catch {
+      results.push("❌ Đọc users: LỖI");
+    }
+
+    // 4. Kiểm tra đọc medicalEvents
+    try {
+      const eventsSnap = await getDocs(collection(db, "medicalEvents"));
+      results.push(`✅ Đọc medicalEvents: OK (${eventsSnap.size} bản ghi)`);
+    } catch {
+      results.push("❌ Đọc medicalEvents: LỖI");
+    }
+
+    Alert.alert("Kiểm tra hệ thống", results.join("\n"));
   };
 
   const ConfigSection = ({
@@ -358,7 +433,8 @@ export default function SystemConfig() {
             <View style={styles.profileStat}>
               <Text style={styles.profileStatLabel}>Trạng thái</Text>
               <Text style={styles.profileStatValue}>
-                {userProfile?.status === "active"
+                {userProfile?.status === "active" ||
+                userProfile?.status === "approved"
                   ? "🟢 Hoạt động"
                   : "🔴 Không hoạt động"}
               </Text>

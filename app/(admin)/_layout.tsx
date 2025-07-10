@@ -1,5 +1,4 @@
-import { router, Tabs } from "expo-router";
-import { useEffect } from "react";
+import { Tabs } from "expo-router";
 import { ActivityIndicator, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -15,17 +14,6 @@ export default function AdminLayout() {
   const colorScheme = useColorScheme();
   const insets = useSafeAreaInsets();
   const { userProfile, loading, canAccess } = useAuth();
-
-  useEffect(() => {
-    if (!loading) {
-      // Kiểm tra quyền admin
-      if (!canAccess || !userProfile || userProfile.role !== "administrator") {
-        console.log("Admin access denied, redirecting to login");
-        router.replace("/Login");
-        return;
-      }
-    }
-  }, [userProfile, loading, canAccess]);
 
   // Hiển thị loading hoặc không có quyền
   if (
