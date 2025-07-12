@@ -1,18 +1,25 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import React, { useEffect, useState } from "react";
-import { Alert, Dimensions, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  Dimensions,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { auth } from "../lib/firebase";
 import { resendEmailVerification } from "../services/authService";
 
-const { width } = Dimensions.get('window');
+const { width } = Dimensions.get("window");
 
 export default function EmailVerification() {
   const [loading, setLoading] = useState(false);
   const [checkingLoading, setCheckingLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [errors, setErrors] = useState({
-    general: ""
+    general: "",
   });
   const [successMessage, setSuccessMessage] = useState("");
   const [lastResendTime, setLastResendTime] = useState(0);
@@ -29,10 +36,10 @@ export default function EmailVerification() {
       if (user && user.emailVerified) {
         setSuccessMessage("Email đã được xác minh thành công! 🎉");
         setErrors({ general: "" });
-        
+
         // Đăng xuất user để họ đăng nhập lại với email đã verified
         signOut(auth);
-        
+
         setTimeout(() => {
           Alert.alert(
             "Xác minh thành công! 🎉",
@@ -40,8 +47,8 @@ export default function EmailVerification() {
             [
               {
                 text: "Đăng nhập lại",
-                onPress: () => router.replace("/Login")
-              }
+                onPress: () => router.replace("/Login"),
+              },
             ]
           );
         }, 1000);
@@ -68,7 +75,7 @@ export default function EmailVerification() {
     if (!canResendEmail()) {
       const remaining = getResendCooldown();
       setErrors({
-        general: `Vui lòng đợi ${remaining} giây trước khi gửi lại email.`
+        general: `Vui lòng đợi ${remaining} giây trước khi gửi lại email.`,
       });
       return;
     }
@@ -76,7 +83,7 @@ export default function EmailVerification() {
     setLoading(true);
     setErrors({ general: "" });
     setSuccessMessage("");
-    
+
     try {
       await resendEmailVerification();
       setLastResendTime(Date.now());
@@ -85,7 +92,7 @@ export default function EmailVerification() {
       );
     } catch (error: any) {
       setErrors({
-        general: error.message || "Không thể gửi email xác minh!"
+        general: error.message || "Không thể gửi email xác minh!",
       });
     } finally {
       setLoading(false);
@@ -99,7 +106,7 @@ export default function EmailVerification() {
       [
         {
           text: "Ở lại",
-          style: "cancel"
+          style: "cancel",
         },
         {
           text: "Quay lại",
@@ -107,8 +114,8 @@ export default function EmailVerification() {
             // Đăng xuất user hiện tại và quay về login
             signOut(auth);
             router.replace("/Login");
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -116,18 +123,18 @@ export default function EmailVerification() {
   const handleCheckVerification = async () => {
     setCheckingLoading(true);
     setErrors({ general: "" });
-    
+
     try {
       // Reload user để cập nhật trạng thái emailVerified
       await auth.currentUser?.reload();
       const user = auth.currentUser;
-      
+
       if (user?.emailVerified) {
         setSuccessMessage("Email đã được xác minh thành công! 🎉");
-        
+
         // Đăng xuất để họ đăng nhập lại với email đã verified
         signOut(auth);
-        
+
         setTimeout(() => {
           Alert.alert(
             "Xác minh thành công! 🎉",
@@ -135,19 +142,20 @@ export default function EmailVerification() {
             [
               {
                 text: "Đăng nhập lại",
-                onPress: () => router.replace("/Login")
-              }
+                onPress: () => router.replace("/Login"),
+              },
             ]
           );
         }, 1000);
       } else {
         setErrors({
-          general: "Email chưa được xác minh. Vui lòng kiểm tra hộp thư và click vào link xác minh."
+          general:
+            "Email chưa được xác minh. Vui lòng kiểm tra hộp thư và click vào link xác minh.",
         });
       }
     } catch (error) {
       setErrors({
-        general: "Không thể kiểm tra trạng thái xác minh. Vui lòng thử lại."
+        general: "Không thể kiểm tra trạng thái xác minh. Vui lòng thử lại.",
       });
     } finally {
       setCheckingLoading(false);
@@ -174,7 +182,9 @@ export default function EmailVerification() {
           </View>
           <View style={styles.step}>
             <Text style={styles.stepNumber}>2.</Text>
-            <Text style={styles.stepText}>Tìm email từ School Medicine MMA</Text>
+            <Text style={styles.stepText}>
+              Tìm email từ School Medicine MMA
+            </Text>
           </View>
           <View style={styles.step}>
             <Text style={styles.stepNumber}>3.</Text>
@@ -199,11 +209,11 @@ export default function EmailVerification() {
         ) : null}
 
         <View style={styles.actionContainer}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
               styles.checkButton,
-              (checkingLoading || successMessage) && styles.buttonDisabled
-            ]} 
+              (checkingLoading || successMessage) && styles.buttonDisabled,
+            ]}
             onPress={handleCheckVerification}
             disabled={checkingLoading || !!successMessage}
           >
@@ -212,23 +222,26 @@ export default function EmailVerification() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
-              styles.resendButton, 
-              (loading || !canResendEmail() || successMessage) && styles.buttonDisabled
-            ]} 
+              styles.resendButton,
+              (loading || !canResendEmail() || successMessage) &&
+                styles.buttonDisabled,
+            ]}
             onPress={handleResendVerification}
             disabled={loading || !canResendEmail() || !!successMessage}
           >
             <Text style={styles.resendButtonText}>
-              {loading ? "Đang gửi..." : 
-               !canResendEmail() ? `📤 Gửi lại (${getResendCooldown()}s)` :
-               "📤 Gửi lại email"}
+              {loading
+                ? "Đang gửi..."
+                : !canResendEmail()
+                ? `📤 Gửi lại (${getResendCooldown()}s)`
+                : "📤 Gửi lại email"}
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.backButton} 
+          <TouchableOpacity
+            style={styles.backButton}
             onPress={handleBackToLogin}
           >
             <Text style={styles.backButtonText}>← Quay lại đăng nhập</Text>
@@ -249,20 +262,20 @@ export default function EmailVerification() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
+  container: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
-    backgroundColor: '#f8f9fa'
+    backgroundColor: "#f8f9fa",
   },
   verificationCard: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 20,
     padding: 30,
     width: width * 0.9,
     maxWidth: 400,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -272,98 +285,98 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 30,
   },
   icon: {
     fontSize: 60,
     marginBottom: 15,
   },
-  title: { 
-    fontSize: 24, 
-    fontWeight: "bold", 
-    color: '#2c3e50',
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#2c3e50",
     textAlign: "center",
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 16,
-    color: '#7f8c8d',
-    textAlign: 'center',
+    color: "#7f8c8d",
+    textAlign: "center",
     marginBottom: 5,
   },
   email: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#3498db',
-    textAlign: 'center',
+    fontWeight: "600",
+    color: "#3498db",
+    textAlign: "center",
   },
   instructionContainer: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: "#f8f9fa",
     borderRadius: 12,
     padding: 20,
     marginBottom: 25,
   },
   instructionTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#2c3e50',
+    fontWeight: "600",
+    color: "#2c3e50",
     marginBottom: 15,
   },
   step: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     marginBottom: 10,
   },
   stepNumber: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#3498db',
+    fontWeight: "600",
+    color: "#3498db",
     width: 20,
   },
   stepText: {
     fontSize: 14,
-    color: '#2c3e50',
+    color: "#2c3e50",
     flex: 1,
     lineHeight: 20,
   },
   successContainer: {
-    backgroundColor: '#d4edda',
+    backgroundColor: "#d4edda",
     borderRadius: 8,
     padding: 15,
     marginBottom: 15,
     borderLeftWidth: 4,
-    borderLeftColor: '#27ae60',
+    borderLeftColor: "#27ae60",
   },
   successText: {
-    color: '#155724',
+    color: "#155724",
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
   },
   errorContainer: {
-    backgroundColor: '#ffebee',
+    backgroundColor: "#ffebee",
     borderRadius: 8,
     padding: 12,
     marginBottom: 15,
     borderLeftWidth: 4,
-    borderLeftColor: '#e74c3c',
+    borderLeftColor: "#e74c3c",
   },
   errorText: {
-    color: '#c62828',
+    color: "#c62828",
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
   },
   actionContainer: {
     marginBottom: 20,
   },
   checkButton: {
-    backgroundColor: '#27ae60',
+    backgroundColor: "#27ae60",
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 12,
-    shadowColor: '#27ae60',
+    shadowColor: "#27ae60",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -373,18 +386,18 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   checkButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   resendButton: {
-    backgroundColor: '#f39c12',
+    backgroundColor: "#f39c12",
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 24,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 12,
-    shadowColor: '#f39c12',
+    shadowColor: "#f39c12",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -394,9 +407,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   resendButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   buttonDisabled: {
     opacity: 0.6,
@@ -409,19 +422,19 @@ const styles = StyleSheet.create({
   backButtonText: {
     color: "#3498db",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   footer: {
     borderTopWidth: 1,
-    borderTopColor: '#e1e8ed',
+    borderTopColor: "#e1e8ed",
     paddingTop: 15,
-    alignItems: 'center',
+    alignItems: "center",
   },
   footerText: {
     fontSize: 12,
-    color: '#95a5a6',
-    textAlign: 'center',
-    fontStyle: 'italic',
+    color: "#95a5a6",
+    textAlign: "center",
+    fontStyle: "italic",
     marginBottom: 4,
   },
-}); 
+});

@@ -147,8 +147,9 @@ export default function Home() {
             description: "Xem thông tin sức khỏe",
             icon: MedicalIcons.family,
             color: RoleColors.parent.primary,
-            action: () =>
-              Alert.alert("Sức khỏe con em", "Chức năng đang phát triển"),
+            // action: () =>
+            //   Alert.alert("Sức khỏe con em", "Chức năng đang phát triển"),
+            action: () => router.push("/StudentHealth"),
           },
           {
             id: "emergency",
@@ -157,6 +158,28 @@ export default function Home() {
             icon: MedicalIcons.alert,
             color: MedicalColors.error,
             action: () => Alert.alert("Khẩn cấp", "Hotline: 0123-456-789"),
+          },
+          // Thêm 2 button mới cho phụ huynh
+          {
+            id: "report-student-health",
+            title: "Khai báo tình trạng sức khỏe HS",
+            description: "Báo cáo sức khỏe học sinh cho nhà trường",
+            icon: MedicalIcons.report,
+            color: MedicalColors.info,
+            action: () => router.push("/ReportStudentHealth"),
+          },
+          {
+            id: "give-medicine",
+            title: "Đưa thuốc cho HS",
+            description: "Khai báo việc đưa thuốc cho học sinh",
+            icon: MedicalIcons.syringe,
+            color: MedicalColors.accent,
+            // action: () =>
+            //   Alert.alert(
+            //     "Đưa thuốc",
+            //     "Chức năng khai báo đưa thuốc cho học sinh"
+            //   ),
+            action: () => router.push("/MedicineDistribution"),
           },
         ];
       case "medical_staff":
