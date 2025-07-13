@@ -147,8 +147,6 @@ export default function Home() {
             description: "Xem thông tin sức khỏe",
             icon: MedicalIcons.family,
             color: RoleColors.parent.primary,
-            // action: () =>
-            //   Alert.alert("Sức khỏe con em", "Chức năng đang phát triển"),
             action: () => router.push("/StudentHealth"),
           },
           {
@@ -174,11 +172,6 @@ export default function Home() {
             description: "Khai báo việc đưa thuốc cho học sinh",
             icon: MedicalIcons.syringe,
             color: MedicalColors.accent,
-            // action: () =>
-            //   Alert.alert(
-            //     "Đưa thuốc",
-            //     "Chức năng khai báo đưa thuốc cho học sinh"
-            //   ),
             action: () => router.push("/MedicineDistribution"),
           },
         ];
@@ -313,12 +306,12 @@ export default function Home() {
       action: () => router.push("/EventReport"),
     },
     {
-      id: "vaccination",
-      title: "Quản lý tiêm chủng",
-      description: "Quản lý lịch và báo cáo tiêm chủng",
+      id: "medicine-distribution",
+      title: "Giao thuốc",
+      description: "Quản lý việc giao thuốc cho học sinh",
       icon: MedicalIcons.syringe,
       color: MedicalColors.accent,
-      action: () => router.push("/Vaccination"),
+      action: () => router.push("/medicineDelivery"), // Đúng route cho y tá
     },
   ];
 
