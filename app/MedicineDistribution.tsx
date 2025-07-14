@@ -35,14 +35,13 @@ interface MedicineForm {
 interface MedicineRequest {
   id: string;
   medicineName: string;
-  dose: string;
-  frequency: string;
-  studentsId: string;
-  note: string;
-  startDate: string;
-  endDate: string;
-  status?: string;
+  dosage: string;
+  studentId: string;
+  time: string;
+  notes?: string;
+  createdBy?: string;
   createdAt: any;
+  status: string; // <-- thêm dòng này
 }
 
 export default function MedicineDistribution() {
@@ -88,7 +87,9 @@ export default function MedicineDistribution() {
   };
 
   useEffect(() => {
-    if (!showForm) fetchRequests();
+    if (!showForm) {
+      setTimeout(fetchRequests, 300); // 300ms delay
+    }
   }, [showForm]);
 
   const onRefresh = async () => {
@@ -116,6 +117,7 @@ export default function MedicineDistribution() {
         notes: form.notes,
         createdBy: userProfile?.email || "",
         createdAt: new Date(),
+        status: "pending", // <-- thêm dòng này
       });
       Alert.alert(
         "Thành công",
@@ -129,7 +131,6 @@ export default function MedicineDistribution() {
         time: "",
         notes: "",
       });
-      fetchRequests();
     } catch (error) {
       Alert.alert("Lỗi", "Không thể gửi khai báo. Vui lòng thử lại!");
     } finally {
@@ -239,21 +240,31 @@ export default function MedicineDistribution() {
               <Text style={styles.medicineName}>{item.medicineName}</Text>
               <Text style={styles.info}>
                 Mã học sinh:{" "}
-                <Text style={{ fontWeight: "bold" }}>{item.studentsId}</Text>
+                <Text style={{ fontWeight: "bold" }}>{item.studentId}</Text>
               </Text>
-              <Text style={styles.info}>Liều lượng: {item.dose}</Text>
-              <Text style={styles.info}>Tần suất: {item.frequency}</Text>
-              <Text style={styles.info}>
-                Thời gian: {item.startDate} - {item.endDate}
-              </Text>
-              {item.note ? (
-                <Text style={styles.info}>Ghi chú: {item.note}</Text>
+              <Text style={styles.info}>Liều lượng: {item.dosage}</Text>
+              <Text style={styles.info}>Thời gian: {item.time || "-"}</Text>
+              {item.notes ? (
+                <Text style={styles.info}>Ghi chú: {item.notes}</Text>
               ) : null}
               <Text style={styles.info}>
                 Ngày khai báo:{" "}
                 {item.createdAt?.toDate
                   ? item.createdAt.toDate().toLocaleString()
                   : "-"}
+              </Text>
+              <Text
+                style={{
+                  color: item.status === "pending" ? "#b71c1c" : "#388e3c",
+                  marginTop: 4,
+                }}
+              >
+                Trạng thái:{" "}
+                <Text style={{ fontWeight: "bold" }}>
+                  {item.status === "pending"
+                    ? "Đang chờ xác nhận"
+                    : "Đã giao thuốc"}
+                </Text>
               </Text>
             </View>
           )}

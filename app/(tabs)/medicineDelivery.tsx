@@ -23,16 +23,15 @@ import { db } from "../../lib/firebase";
 interface MedicineRequest {
   id: string;
   medicineName: string;
-  dose: string;
-  frequency: string;
-  studentsId: string;
-  note: string;
+  dosage: string;
+  studentId: string;
+  time: string;
+  notes?: string;
   status: string;
-  startDate: string;
-  endDate: string;
+  createdBy?: string;
+  createdAt?: any;
   confirmedBy?: string;
   confirmedAt?: string;
-  createdAt?: any;
 }
 
 export default function MedicineDistribution() {
@@ -119,15 +118,13 @@ export default function MedicineDistribution() {
               <Text style={styles.medicineName}>{item.medicineName}</Text>
               <Text style={styles.info}>
                 Học sinh:{" "}
-                <Text style={{ fontWeight: "bold" }}>{item.studentsId}</Text>
+                <Text style={{ fontWeight: "bold" }}>{item.studentId}</Text>
               </Text>
-              <Text style={styles.info}>Liều dùng: {item.dose}</Text>
-              <Text style={styles.info}>Tần suất: {item.frequency}</Text>
-              <Text style={styles.info}>
-                Thời gian: {item.startDate} - {item.endDate}
-              </Text>
-              {item.note ? (
-                <Text style={styles.info}>Ghi chú: {item.note}</Text>
+              <Text style={styles.info}>Liều dùng: {item.dosage}</Text>
+              <Text style={styles.info}>Tần suất: -</Text>
+              <Text style={styles.info}>Thời gian: {item.time || "-"}</Text>
+              {item.notes ? (
+                <Text style={styles.info}>Ghi chú: {item.notes}</Text>
               ) : null}
               <Text style={styles.status}>
                 Trạng thái:{" "}

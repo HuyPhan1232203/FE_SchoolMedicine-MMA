@@ -6,6 +6,7 @@ import {
   Alert,
   Dimensions,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -55,30 +56,50 @@ const Setting = () => {
   );
 
   const handleLogout = async () => {
-    Alert.alert(
-      "Xác nhận đăng xuất",
-      "Bạn có chắc chắn muốn đăng xuất khỏi hệ thống y tế trường học không?",
-      [
-        {
-          text: "Hủy",
-          style: "cancel",
-        },
-        {
-          text: "Đăng xuất",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await signOut(auth);
-              await AsyncStorage.removeItem("loginTime");
-              router.replace("/Login");
-            } catch (error) {
-              Alert.alert("Lỗi", "Có lỗi khi đăng xuất!");
-              console.error(error);
-            }
+    console.log("Logout pressed");
+    if (Platform.OS === "web") {
+      // Xử lý cho web
+      if (
+        window.confirm(
+          "Bạn có chắc chắn muốn đăng xuất khỏi hệ thống y tế trường học không?"
+        )
+      ) {
+        try {
+          await signOut(auth);
+          await AsyncStorage.removeItem("loginTime");
+          router.replace("/Login");
+        } catch (error) {
+          window.alert("Có lỗi khi đăng xuất!");
+          console.error(error);
+        }
+      }
+    } else {
+      // Xử lý cho mobile (Android/iOS)
+      Alert.alert(
+        "Xác nhận đăng xuất",
+        "Bạn có chắc chắn muốn đăng xuất khỏi hệ thống y tế trường học không?",
+        [
+          {
+            text: "Hủy",
+            style: "cancel",
           },
-        },
-      ]
-    );
+          {
+            text: "Đăng xuất",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await signOut(auth);
+                await AsyncStorage.removeItem("loginTime");
+                router.replace("/Login");
+              } catch (error) {
+                Alert.alert("Lỗi", "Có lỗi khi đăng xuất!");
+                console.error(error);
+              }
+            },
+          },
+        ]
+      );
+    }
   };
 
   const toggleNotification = (key: keyof typeof notifications) => {
